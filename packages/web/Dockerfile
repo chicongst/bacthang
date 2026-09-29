@@ -1,5 +1,5 @@
 # Built from the repository root: web renders the shared UI in packages/app.
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /src
 # Every workspace manifest, because npm ci checks the lockfile against all of them.
 COPY package.json package-lock.json ./
