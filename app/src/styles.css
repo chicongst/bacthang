@@ -227,7 +227,7 @@ button:disabled { cursor: default; }
    reach past the row without taking layout space. */
 /* The crest hangs below the avatar by about 12px, so the name needs that much room
    or the bottom gem lands on it. */
-.crest-wrap { position: relative; display: grid; place-items: center; isolation: isolate; margin-bottom: 11px; }
+.crest-wrap { position: relative; display: grid; place-items: center; isolation: isolate; margin-bottom: 13px; }
 .crest-wrap > :not(.crest) { position: relative; z-index: 1; }
 .crest {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50.85%);

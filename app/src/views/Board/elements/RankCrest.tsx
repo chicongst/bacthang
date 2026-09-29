@@ -8,19 +8,38 @@ const COLORS: Record<Place, [rim: string, body: string, deep: string, edge: stri
   3: ["#F2CBA4", "#C07F4A", "#66381E", "#26130A"],
 };
 
-// The ring is what makes this read as a frame instead of two wings stuck on the sides.
-// Everything else hangs off it: blades at the equator, a crown on top, a gem below.
-const RING = { cx: 80, cy: 60, r: 40 };
+// The frame is a Dong Son drum face: a banded rim carrying Lac birds, the long-beaked
+// herons that circle every real drum. They fly counterclockwise on the bronzes, so they
+// fly counterclockwise here. Six of them, not ten: at this size ten become texture.
+const CENTRE = { cx: 80, cy: 60 };
+const BAND_R = 38.5;
+const BIRDS = 4;
+const BIRD_SCALE = 1;
+const BIRD_BOX = { w: 34, h: 12 };
 
-// Right half only, mirrored for the left. Three short blades with sharp tips: long
-// sweeping curves read as two fat leaves, short ones read as a folded wing.
+// The real bird is long and thin, roughly three to one. A stubbier drawing reads as an
+// arrowhead at this size, which is what the first two attempts looked like.
+const BIRD_BODY =
+  "M0 6.1L9.6 4.7L12 3.5L14 4.3L22 5.7L34 2.5L26.6 6.5L33 9.7L21.6 8.1L12 7.3L9.4 6.9Z";
+const BIRD_WING = "M14.5 4.4L19.5 -2.9L22.4 5.1Z";
+const BIRD_LEGS = "M19.6 7.5L26.6 10.9L25 11.3L19 8Z";
+
+function birdTransform(index: number): string {
+  const angle = (index * 360) / BIRDS;
+  const x = CENTRE.cx - (BIRD_BOX.w * BIRD_SCALE) / 2;
+  const y = CENTRE.cy - BAND_R - (BIRD_BOX.h * BIRD_SCALE) / 2;
+  return `rotate(${angle} ${CENTRE.cx} ${CENTRE.cy}) translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${BIRD_SCALE})`;
+}
+
+// Right half only, mirrored for the left. Roots clear the drum rim; tips stay inside
+// the viewBox so nothing is clipped.
 const BLADES = [
-  "M114 47C126 41 136 34 147 23C143 37 135 47 122 56C121 52 118 49 114 47Z",
-  "M116 58C127 54 135 48 143 40C139 52 131 61 121 67C121 63 119 60 116 58Z",
-  "M118 68C126 66 133 62 139 55C136 65 130 72 122 78C122 74 120 70 118 68Z",
+  "M129 48C140 43 148 36 156 25C152 38 145 47 136 55C135 52 132 50 129 48Z",
+  "M131 58C140 55 146 50 152 43C148 53 142 60 134 66C134 62 133 60 131 58Z",
+  "M132 67C139 65 144 62 148 57C146 65 141 70 135 75C135 71 134 69 132 67Z",
 ];
-const CROWN = "M69 22L74 9L80 17L86 9L91 22C84 19 76 19 69 22Z";
-const GEM = "M80 95L87 104L80 113L73 104Z";
+const CROWN = "M69 14L74 2L80 10L86 2L91 14C84 11 76 11 69 14Z";
+const GEM = "M80 100L86.5 108L80 116L73.5 108Z";
 
 const spark = (x: number, y: number, r: number) =>
   `M${x} ${y - r}Q${x + r * 0.26} ${y - r * 0.26} ${x + r} ${y}` +
@@ -45,9 +64,9 @@ function sparksFor(seed: number, count: number) {
   const next = rng(seed + 7);
   return Array.from({ length: count }, () => {
     const angle = next() * Math.PI * 2;
-    const distance = 46 + next() * 26;
+    const distance = 50 + next() * 24;
     return {
-      d: spark(80 + Math.cos(angle) * distance, 60 + Math.sin(angle) * distance * 0.76, 5 + next() * 6),
+      d: spark(80 + Math.cos(angle) * distance, 60 + Math.sin(angle) * distance * 0.72, 5 + next() * 6),
       delay: `${(next() * 2.6).toFixed(2)}s`,
       duration: `${(2.2 + next() * 1.3).toFixed(2)}s`,
     };
@@ -92,8 +111,28 @@ export function RankCrest({ place, width, seed }: { place: Place; width: number;
         </g>
       )}
 
-      <circle {...RING} fill="none" stroke={edge} strokeWidth="7.5" />
-      <circle {...RING} fill="none" stroke={`url(#${fill})`} strokeWidth="4.5" />
+      <circle
+        {...CENTRE}
+        r={48.5}
+        fill="none"
+        stroke={`url(#${fill})`}
+        strokeWidth="2"
+        strokeDasharray="1.4 3.6"
+        strokeLinecap="round"
+      />
+      <circle {...CENTRE} r={BAND_R} fill="none" stroke={edge} strokeWidth="14.5" />
+      <circle {...CENTRE} r={BAND_R} fill="none" stroke={`url(#${fill})`} strokeWidth="12" />
+      <g fill={edge}>
+        {Array.from({ length: BIRDS }, (_, i) => (
+          <g key={i} transform={birdTransform(i)}>
+            <path d={BIRD_BODY} />
+            <path d={BIRD_WING} />
+            <path d={BIRD_LEGS} />
+          </g>
+        ))}
+      </g>
+      <circle {...CENTRE} r={32.3} fill="none" stroke={edge} strokeWidth="1.4" />
+      <circle {...CENTRE} r={44.8} fill="none" stroke={edge} strokeWidth="1.4" />
 
       <g fill={`url(#${fill})`} stroke={edge} strokeWidth="1.6" strokeLinejoin="round">
         <path d={CROWN} />
