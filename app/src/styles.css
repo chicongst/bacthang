@@ -106,7 +106,8 @@ button:disabled { cursor: default; }
 .plate-wrap { display: flex; justify-content: center; padding: 12px 12px 6px; }
 .plate {
   position: relative;
-  display: flex; align-items: stretch; max-width: 100%;
+  /* Full width, so its edges line up with the profile card below it. */
+  display: flex; align-items: stretch; width: 100%;
   border-radius: 8px;
   padding: 2px;
   background: linear-gradient(180deg, #FFE9A8 0%, var(--brass) 38%, #8A5F10 100%);
@@ -132,7 +133,7 @@ button:disabled { cursor: default; }
 }
 .plate-face {
   position: relative; overflow: hidden; min-width: 0;
-  display: flex; align-items: center;
+  flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
   margin: 0 2px; padding: 7px 14px; min-height: 34px;
   border-radius: 5px;
   background: linear-gradient(180deg, #2A6B58 0%, #14453A 52%, #0B2C25 100%);
