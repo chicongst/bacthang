@@ -11,3 +11,8 @@ dist/
 
 # Your own deploy target, not anybody else's
 .deploy-host
+
+# Test output
+coverage/
+test-results/
+playwright-report/

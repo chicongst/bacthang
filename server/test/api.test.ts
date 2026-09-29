@@ -96,6 +96,67 @@ describe("sign-in", () => {
     expect(res.statusCode).toBe(401);
     expect(res.json().error.code).toBe("UNAUTHORIZED");
   });
+
+  it("stops honouring a token after logout", async () => {
+    const a = await login("code-a");
+    await app.inject({ method: "POST", url: "/auth/logout", headers: a.headers });
+
+    const res = await app.inject({ method: "GET", url: "/me", headers: a.headers });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("logging out everywhere kills the other devices too", async () => {
+    const phone = await login("code-a");
+    const laptop = await login("code-a");
+    expect((await app.inject({ method: "GET", url: "/me", headers: laptop.headers })).statusCode).toBe(200);
+
+    const res = await app.inject({ method: "POST", url: "/auth/logout-all", headers: phone.headers });
+    expect(res.statusCode).toBe(204);
+
+    expect((await app.inject({ method: "GET", url: "/me", headers: phone.headers })).statusCode).toBe(401);
+    expect((await app.inject({ method: "GET", url: "/me", headers: laptop.headers })).statusCode).toBe(401);
+  });
+
+  it("leaves other people's sessions alone", async () => {
+    const a = await login("code-a");
+    const b = await login("code-b");
+
+    await app.inject({ method: "POST", url: "/auth/logout-all", headers: a.headers });
+
+    expect((await app.inject({ method: "GET", url: "/me", headers: b.headers })).statusCode).toBe(200);
+  });
+});
+
+describe("workspace isolation", () => {
+  it("keeps an outsider off another workspace's board, members and events", async () => {
+    const owner = await login("code-a");
+    const ws = await makeWs(owner.token);
+    const outsider = await login("code-b");
+
+    for (const url of [`/workspaces/${ws.id}/board`, `/workspaces/${ws.id}/members`, `/workspaces/${ws.id}/matches`]) {
+      const res = await app.inject({ method: "GET", url, headers: outsider.headers });
+      expect(res.statusCode, url).toBe(403);
+      expect(res.json().error.code, url).toBe("NOT_MEMBER");
+    }
+  });
+
+  it("stops an owner from reaching into a workspace they do not own", async () => {
+    const alice = await login("code-a");
+    const mine = await makeWs(alice.token);
+    const bob = await login("code-b");
+    const theirs = await makeWs(bob.token);
+
+    const rename = await app.inject({
+      method: "PATCH",
+      url: `/workspaces/${theirs.id}`,
+      headers: alice.headers,
+      payload: { name: "Taken over" },
+    });
+    expect(rename.statusCode).toBe(403);
+
+    const board = await app.inject({ method: "GET", url: `/workspaces/${mine.id}/board`, headers: alice.headers });
+    expect(board.json().workspace.name).toBe("Downtown Club");
+  });
 });
 
 describe("creating and searching workspaces", () => {

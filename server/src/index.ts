@@ -1,11 +1,13 @@
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { createDb, runMigrations } from "./db/client.js";
+import { deleteExpiredSessions } from "./services/sessions.js";
 import { createDiscordClient } from "./services/discord.js";
 
 const config = loadConfig();
 const { db, pool } = createDb(config.databaseUrl);
 await runMigrations(db);
+await deleteExpiredSessions(db, new Date());
 
 const app = await buildApp({
   db,

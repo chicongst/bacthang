@@ -11,7 +11,13 @@ const idParams = { params: { type: "object", properties: { id: ID_SCHEMA } } } a
 export async function workspaceRoutes(app: FastifyInstance, ctx: RouteContext): Promise<void> {
   app.get<{ Querystring: { q?: string } }>(
     "/workspaces/search",
-    { schema: { querystring: { type: "object", properties: { q: { type: "string", maxLength: 60 } } } } },
+    {
+      schema: {
+        tags: ["workspaces"],
+        summary: "Search workspaces by name, ignoring Vietnamese diacritics",
+        querystring: { type: "object", properties: { q: { type: "string", maxLength: 60 } } },
+      },
+    },
     async (req) => {
       const user = await ctx.requireUser(req);
       return { workspaces: await searchWorkspaces(ctx.db, { q: req.query.q ?? "", userId: user.id }) };
@@ -23,6 +29,8 @@ export async function workspaceRoutes(app: FastifyInstance, ctx: RouteContext): 
     {
       config: ctx.rateLimit(ctx.limits?.writePerWindow),
       schema: {
+        tags: ["workspaces"],
+        summary: "Create a workspace; the caller becomes its owner",
         body: {
           type: "object",
           required: ["name", "isPublic"],
@@ -39,24 +47,30 @@ export async function workspaceRoutes(app: FastifyInstance, ctx: RouteContext): 
     },
   );
 
-  app.post<IdParams>("/workspaces/:id/join", { schema: idParams }, async (req) => {
-    const user = await ctx.requireUser(req);
-    const workspaceId = Number(req.params.id);
-    const result = await joinWorkspace(ctx.db, { workspaceId, userId: user.id, now: ctx.now() });
-    req.log.info({ event: "workspace.joined", workspaceId, userId: user.id, status: result.status });
-    ctx.emit(workspaceId, result.status === "active" ? "board" : "members");
-    return result;
-  });
+  app.post<IdParams>(
+    "/workspaces/:id/join",
+    { schema: { ...idParams, tags: ["workspaces"], summary: "Join a public workspace, or ask the owner of a private one" } }, async (req) => {
+      const user = await ctx.requireUser(req);
+      const workspaceId = Number(req.params.id);
+      const result = await joinWorkspace(ctx.db, { workspaceId, userId: user.id, now: ctx.now() });
+      req.log.info({ event: "workspace.joined", workspaceId, userId: user.id, status: result.status });
+      ctx.emit(workspaceId, result.status === "active" ? "board" : "members");
+      return result;
+    },
+  );
 
-  app.post<IdParams>("/workspaces/:id/leave", { schema: idParams }, async (req, reply) => {
-    const { user, workspaceId } = await ctx.inWorkspace(req);
-    await leaveWorkspace(ctx.db, { workspaceId, userId: user.id });
-    req.log.info({ event: "workspace.left", workspaceId, userId: user.id });
-    ctx.emit(workspaceId, "board");
-    return reply.code(204).send();
-  });
+  app.post<IdParams>(
+    "/workspaces/:id/leave",
+    { schema: { ...idParams, tags: ["workspaces"], summary: "Leave a workspace; points are kept for when you come back" } }, async (req, reply) => {
+      const { user, workspaceId } = await ctx.inWorkspace(req);
+      await leaveWorkspace(ctx.db, { workspaceId, userId: user.id });
+      req.log.info({ event: "workspace.left", workspaceId, userId: user.id });
+      ctx.emit(workspaceId, "board");
+      return reply.code(204).send();
+    },
+  );
 
-  app.get<IdParams>("/workspaces/:id/board", { schema: idParams }, async (req) => {
+  app.get<IdParams>("/workspaces/:id/board", { schema: { ...idParams, tags: ["workspaces"], summary: "The leaderboard, the caller's own row and the scoring rules" } }, async (req) => {
     const user = await ctx.requireUser(req);
     return getBoard(ctx.db, { workspaceId: Number(req.params.id), userId: user.id, now: ctx.now() });
   });
@@ -66,6 +80,8 @@ export async function workspaceRoutes(app: FastifyInstance, ctx: RouteContext): 
     {
       schema: {
         ...idParams,
+        tags: ["workspaces"],
+        summary: "Rename a workspace or switch it between public and private (owner only)",
         body: {
           type: "object",
           additionalProperties: false,

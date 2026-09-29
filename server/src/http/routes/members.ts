@@ -8,7 +8,13 @@ const memberParams = { params: { type: "object", properties: { id: ID_SCHEMA, us
 export async function memberRoutes(app: FastifyInstance, ctx: RouteContext): Promise<void> {
   app.get<IdParams>(
     "/workspaces/:id/members",
-    { schema: { params: { type: "object", properties: { id: ID_SCHEMA } } } },
+    {
+      schema: {
+        tags: ["members"],
+        summary: "Everyone in the workspace, pending requests included (owner only)",
+        params: { type: "object", properties: { id: ID_SCHEMA } },
+      },
+    },
     async (req) => {
       const { workspaceId } = await ctx.asOwner(req);
       return { members: await listMembers(ctx.db, workspaceId) };
@@ -17,7 +23,7 @@ export async function memberRoutes(app: FastifyInstance, ctx: RouteContext): Pro
 
   app.post<MemberParams>(
     "/workspaces/:id/members/:userId/approve",
-    { schema: memberParams },
+    { schema: { ...memberParams, tags: ["members"], summary: "Approve a join request (owner only)" } },
     async (req, reply) => {
       const { user, workspaceId } = await ctx.asOwner(req);
       const memberId = Number(req.params.userId);
@@ -28,12 +34,15 @@ export async function memberRoutes(app: FastifyInstance, ctx: RouteContext): Pro
     },
   );
 
-  app.delete<MemberParams>("/workspaces/:id/members/:userId", { schema: memberParams }, async (req, reply) => {
-    const { user, workspaceId } = await ctx.asOwner(req);
-    const memberId = Number(req.params.userId);
-    await removeMember(ctx.db, { workspaceId, userId: memberId, actorId: user.id, now: ctx.now() });
-    req.log.warn({ event: "member.removed", workspaceId, memberId, by: user.id });
-    ctx.emit(workspaceId, "board");
-    return reply.code(204).send();
-  });
+  app.delete<MemberParams>(
+    "/workspaces/:id/members/:userId",
+    { schema: { ...memberParams, tags: ["members"], summary: "Decline a request or remove a member (owner only)" } }, async (req, reply) => {
+      const { user, workspaceId } = await ctx.asOwner(req);
+      const memberId = Number(req.params.userId);
+      await removeMember(ctx.db, { workspaceId, userId: memberId, actorId: user.id, now: ctx.now() });
+      req.log.warn({ event: "member.removed", workspaceId, memberId, by: user.id });
+      ctx.emit(workspaceId, "board");
+      return reply.code(204).send();
+    },
+  );
 }

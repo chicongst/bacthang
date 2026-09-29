@@ -32,3 +32,15 @@ export async function userForToken(db: Db, token: string, now: Date) {
 export async function revokeSession(db: Db, token: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.tokenHash, hash(token)));
 }
+
+/** Signs every device out. The way back in after a stolen token or a lost phone. */
+export async function revokeAllSessions(db: Db, userId: number): Promise<number> {
+  const gone = await db.delete(sessions).where(eq(sessions.userId, userId)).returning({ id: sessions.id });
+  return gone.length;
+}
+
+/** Expired rows are dead credentials; nothing reads them, so they only wait to be leaked. */
+export async function deleteExpiredSessions(db: Db, now: Date): Promise<number> {
+  const gone = await db.delete(sessions).where(lte(sessions.expiresAt, now)).returning({ id: sessions.id });
+  return gone.length;
+}

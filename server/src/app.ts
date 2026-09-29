@@ -1,5 +1,8 @@
 import Fastify, { type FastifyError, type FastifyInstance, type FastifyRequest } from "fastify";
 import rateLimit from "@fastify/rate-limit";
+import swagger from "@fastify/swagger";
+import type { OpenAPIV3_1 } from "openapi-types";
+import swaggerUi from "@fastify/swagger-ui";
 import type { Db } from "./db/client.js";
 import { AppError } from "./errors.js";
 import { EventBus, type EventScope } from "./events.js";
@@ -21,6 +24,31 @@ import { requireMember, requireOwner } from "./services/memberships.js";
 
 export { DEFAULT_LIMITS, type Limits } from "./http/context.js";
 
+export const OPENAPI: Partial<OpenAPIV3_1.Document> = {
+  openapi: "3.1.0",
+  info: {
+    title: "Nấc Thang API",
+    description:
+      "Scoring and ranking for a group that competes. Every route except /health and /auth/discord " +
+      "needs a session token, and every route inside a workspace checks membership on the server.",
+    version: "1.0.0",
+    license: { name: "MIT", url: "https://opensource.org/licenses/MIT" },
+  },
+  tags: [
+    { name: "auth", description: "Discord sign-in and session lifetime" },
+    { name: "workspaces", description: "Groups, each with its own board" },
+    { name: "members", description: "Approving and removing people, owner only" },
+    { name: "matches", description: "Recording and undoing results" },
+    { name: "events", description: "The realtime channel" },
+  ],
+  components: {
+    securitySchemes: {
+      bearer: { type: "http", scheme: "bearer", description: "The token returned by POST /auth/discord" },
+    },
+  },
+  security: [{ bearer: [] }],
+};
+
 export interface AppOptions {
   db: Db;
   discord: DiscordClient;
@@ -32,6 +60,8 @@ export interface AppOptions {
   version?: string;
   trustProxy?: boolean;
   limits?: Limits | false;
+  /** The Swagger UI at /docs. On by default; tests turn it off to stay quiet. */
+  docs?: boolean;
 }
 
 function bearerToken(req: FastifyRequest): string | null {
@@ -56,6 +86,11 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
 
   if (limits) {
     await app.register(rateLimit, { global: true, max: limits.perWindow, timeWindow: limits.windowMs });
+  }
+
+  await app.register(swagger, { openapi: OPENAPI });
+  if (opts.docs ?? true) {
+    await app.register(swaggerUi, { routePrefix: "/docs", uiConfig: { docExpansion: "list" } });
   }
 
   // Changes on every deploy; the client compares it with the first value it saw to spot a stale page.
@@ -116,7 +151,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     rateLimit: (max) => (limits && max ? { rateLimit: { max, timeWindow: limits.windowMs } } : {}),
   };
 
-  app.get("/health", async () => ({ ok: true }));
+  app.get("/health", { schema: { summary: "Liveness probe", security: [] } }, async () => ({ ok: true }));
   await app.register(async (instance) => authRoutes(instance, ctx));
   await app.register(async (instance) => workspaceRoutes(instance, ctx));
   await app.register(async (instance) => memberRoutes(instance, ctx));

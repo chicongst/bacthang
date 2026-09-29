@@ -1,6 +1,16 @@
 {$API_DOMAIN} {
 	encode gzip
 
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Avatars are the only third-party resource; everything else is same-origin.
+		Content-Security-Policy "default-src 'self'; img-src 'self' https://cdn.discordapp.com data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		-Server
+	}
+
 	# The API lives under /api, and the prefix is stripped before forwarding
 	handle_path /api/* {
 		reverse_proxy api:3000 {

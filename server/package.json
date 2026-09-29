@@ -9,10 +9,14 @@
     "db:generate": "drizzle-kit generate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "db:test": "docker run -d --rm --name bida-ranking-testdb -e POSTGRES_PASSWORD=test -e POSTGRES_DB=ranking_test -p 54329:5432 postgres:17-alpine"
+    "db:test": "docker run -d --rm --name bida-ranking-testdb -e POSTGRES_PASSWORD=test -e POSTGRES_DB=ranking_test -p 54329:5432 postgres:17-alpine",
+    "openapi": "tsx scripts/openapi.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fastify/rate-limit": "^11.2.0",
+    "@fastify/swagger": "^9.9.0",
+    "@fastify/swagger-ui": "^6.1.1",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.12.5",
     "pg": "^8.23.0"
@@ -20,6 +24,7 @@
   "devDependencies": {
     "@types/node": "^22.20.3",
     "@types/pg": "^8.23.1",
+    "@vitest/coverage-v8": "^5.0.2",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",

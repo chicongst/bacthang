@@ -1,6 +1,12 @@
-# Ranking
+# Nấc Thang
 
-A scoring and rank-climbing board for a group that competes at something: billiards, badminton, chess,
+[![CI](https://github.com/megatron-cong/nacthang/actions/workflows/ci.yml/badge.svg)](https://github.com/megatron-cong/nacthang/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Tests](https://img.shields.io/badge/tests-119-brightgreen)
+![Coverage](https://img.shields.io/badge/server%20coverage-93%25%20lines-brightgreen)
+
+*Nấc thang* is Vietnamese for the rung of a ladder, which is what this is: a scoring and
+rank-climbing board for a group that competes at something: billiards, badminton, chess,
 board games, anything. It runs as a web app and people sign in with Discord.
 
 Each group is its own **workspace** with its own board. After signing in you search for a workspace to
@@ -66,9 +72,18 @@ deploy.sh   One-command deploy to a server
 Everything the host provides reaches the UI through one `Platform` interface, which is how the UI
 stays testable against a fake platform and how it once ran unchanged inside a Chrome extension.
 
-Conventions are in [`CLAUDE.md`](CLAUDE.md), and the front-end ones in
-[`FrontendAgents.md`](FrontendAgents.md). The quality scorecard across 20 dimensions is in
-[`docs/AUDIT.md`](docs/AUDIT.md), and the design notes are in [`docs/plans/`](docs/plans).
+| Document | What it covers |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to set up, what the checks are, what a good change looks like |
+| [`SECURITY.md`](SECURITY.md) | Threat model, design decisions, accepted risks, how to report |
+| [`CLAUDE.md`](CLAUDE.md) | Repository conventions |
+| [`FrontendAgents.md`](FrontendAgents.md) | Front-end conventions for `app/` and `web/` |
+| [`.claude/`](.claude/README.md) | Guardrails that hold an AI assistant to the two files above |
+| [`docs/AUDIT.md`](docs/AUDIT.md) | A 20-dimension quality scorecard, before and after |
+| [`docs/plans/`](docs/plans) | The design notes the project was built from |
+| [`server/openapi.json`](server/openapi.json) | The API, generated from the route schemas and checked in CI |
+
+The running API serves the same spec as a browsable page at `/docs`.
 
 The privacy policy is served at `/privacy.html`, with its source in `web/public/privacy.html`.
 
@@ -94,8 +109,11 @@ docker compose up -d --build
 curl https://<API_DOMAIN>/health     # {"ok":true}
 ```
 
-Caddy needs about half a minute on first boot to obtain a certificate. Database tables are created
-automatically when the API starts.
+Caddy needs about half a minute on first boot to obtain a certificate. The API applies its
+migrations from `server/drizzle/` on startup, so there is no separate migration step.
+
+Pre-built images are published to `ghcr.io/megatron-cong/nacthang/api` and `.../web` on every push
+to `main`, for both amd64 and arm64, if you would rather not build on the server.
 
 `ADMIN_DISCORD_IDS` is a **server admin** list, not a workspace owner list: anyone in it has owner
 rights in every workspace, which is there for cleanup. Leaving it empty is fine since each workspace
@@ -107,11 +125,11 @@ copy the user ID. Separate several with commas and run `docker compose up -d` to
 ```bash
 cd server
 npm install
-npm run db:test    # Postgres for tests, in Docker, on port 54329
-npm test           # 87 tests: scoring rules, daily limits, concurrent writes,
-                   #            sign-in, workspace modes, approvals, removals,
-                   #            permissions, the realtime event stream
+npm run db:test      # Postgres for tests, in Docker, on port 54329
+npm run test:coverage  # 92 tests: scoring rules, daily limits, concurrent writes, sign-in,
+                     #   session revocation, workspace isolation, permissions, the event stream
 npm run typecheck
+npm run openapi      # regenerate server/openapi.json after a route change
 docker stop bida-ranking-testdb
 ```
 
@@ -121,7 +139,12 @@ The UI has its own tests and needs no database:
 cd web
 npm install
 npm test           # 16 tests: i18n, the record-a-match flow, the app shell
+npm run e2e        # 11 Playwright checks in a real browser, desktop and phone width
 ```
+
+The Playwright suite runs against sample data, so it needs no database and no Discord app. It
+catches what jsdom cannot: a broken bundle, a CSS rule that hides a control, a page that scrolls
+sideways on a phone.
 
 To browse the UI on sample data, with no server and no Discord, run `npm run dev` in `web/` and
 open:

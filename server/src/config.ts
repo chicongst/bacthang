@@ -19,7 +19,8 @@ export function loadConfig() {
     discordClientSecret: required("DISCORD_CLIENT_SECRET"),
     discordRedirectUris: list(required("DISCORD_REDIRECT_URIS")),
     adminDiscordIds: list(process.env.ADMIN_DISCORD_IDS),
-    // Behind Caddy the real IP is in X-Forwarded-For, and the rate limiter keys on IP.
-    trustProxy: process.env.TRUST_PROXY !== "false",
+    // Opt in, never by default: trusting X-Forwarded-For on an exposed API lets anyone
+    // forge the IP the rate limiter keys on.
+    trustProxy: process.env.TRUST_PROXY === "true",
   };
 }

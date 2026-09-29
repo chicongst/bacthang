@@ -1,0 +1,34 @@
+name: Bug report
+description: Something behaves differently from what it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A narrative is fine. Enough that someone else can see the same thing.
+      placeholder: |
+        1. Sign in and open a workspace with two members
+        2. Record a match
+        3. The board still shows the old points
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Your own instance, or a shared one. Browser and version help.
+      placeholder: Self-hosted, Firefox 142, Ubuntu 24.04
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server logs, if you have them
+      description: docker compose logs api --tail 50. Remove anything you would not post publicly.
+      render: shell

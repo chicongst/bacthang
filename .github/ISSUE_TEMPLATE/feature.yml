@@ -1,0 +1,22 @@
+name: Idea
+description: Something the project should do and does not
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is awkward today. Describe the situation, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would do about it
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Does it fit the project
+      options:
+        - label: It works for any sport, not just one
+        - label: It does not need a new state library, router or component library

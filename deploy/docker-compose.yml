@@ -23,6 +23,7 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?}
       DISCORD_REDIRECT_URIS: ${DISCORD_REDIRECT_URIS:?}
       ADMIN_DISCORD_IDS: ${ADMIN_DISCORD_IDS:-}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
     depends_on:
       postgres:
         condition: service_healthy

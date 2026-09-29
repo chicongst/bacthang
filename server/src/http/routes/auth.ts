@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { RouteContext } from "../context.js";
 import { AppError } from "../../errors.js";
-import { createSession, revokeSession } from "../../services/sessions.js";
+import { createSession, revokeAllSessions, revokeSession } from "../../services/sessions.js";
 import { upsertDiscordUser } from "../../services/users.js";
 import { myWorkspaces } from "../../services/memberships.js";
 
@@ -11,6 +11,9 @@ export async function authRoutes(app: FastifyInstance, ctx: RouteContext): Promi
     {
       config: ctx.rateLimit(ctx.limits?.authPerWindow),
       schema: {
+        tags: ["auth"],
+        summary: "Exchange a Discord authorization code for a session token",
+        security: [],
         body: {
           type: "object",
           required: ["code", "redirectUri"],
@@ -43,14 +46,27 @@ export async function authRoutes(app: FastifyInstance, ctx: RouteContext): Promi
     },
   );
 
-  app.post("/auth/logout", async (req, reply) => {
+  const schema = (summary: string) => ({ schema: { tags: ["auth"], summary } });
+
+  app.post("/auth/logout", schema("Sign out this device"), async (req, reply) => {
     const header = req.headers.authorization;
     const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
     if (token) await revokeSession(ctx.db, token);
     return reply.code(204).send();
   });
 
-  app.get("/me", async (req) => {
+  app.post(
+    "/auth/logout-all",
+    { config: ctx.rateLimit(ctx.limits?.authPerWindow), ...schema("Sign out every device, revoking all sessions") },
+    async (req, reply) => {
+      const user = await ctx.requireUser(req);
+      const revoked = await revokeAllSessions(ctx.db, user.id);
+      req.log.warn({ event: "auth.logoutAll", userId: user.id, revoked });
+      return reply.code(204).send();
+    },
+  );
+
+  app.get("/me", schema("The signed-in account and its workspaces"), async (req) => {
     const user = await ctx.requireUser(req);
     return { ...user, workspaces: await myWorkspaces(ctx.db, user.id) };
   });

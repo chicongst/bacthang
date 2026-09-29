@@ -9,7 +9,13 @@ export async function eventRoutes(app: FastifyInstance, ctx: RouteContext): Prom
 
   app.get<IdParams>(
     "/workspaces/:id/events",
-    { schema: { params: { type: "object", properties: { id: ID_SCHEMA } } } },
+    {
+      schema: {
+        tags: ["events"],
+        summary: "Server-sent events for one workspace; the payload only says what changed",
+        params: { type: "object", properties: { id: ID_SCHEMA } },
+      },
+    },
     async (req, reply) => {
       const { user, workspaceId } = await ctx.inWorkspace(req);
 

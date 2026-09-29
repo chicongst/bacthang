@@ -7,10 +7,14 @@ const RECENT_LIMIT = 30;
 const idParams = { params: { type: "object", properties: { id: ID_SCHEMA } } } as const;
 
 export async function matchRoutes(app: FastifyInstance, ctx: RouteContext): Promise<void> {
-  app.get<IdParams>("/workspaces/:id/matches", { schema: idParams }, async (req) => {
-    const { workspaceId } = await ctx.inWorkspace(req);
-    return { matches: await recentMatches(ctx.db, workspaceId, RECENT_LIMIT) };
-  });
+  app.get<IdParams>(
+    "/workspaces/:id/matches",
+    { schema: { ...idParams, tags: ["matches"], summary: "The most recent matches in a workspace" } },
+    async (req) => {
+      const { workspaceId } = await ctx.inWorkspace(req);
+      return { matches: await recentMatches(ctx.db, workspaceId, RECENT_LIMIT) };
+    },
+  );
 
   app.post<IdParams & { Body: { opponentId: number; result: "win" | "loss" } }>(
     "/workspaces/:id/matches",
@@ -18,6 +22,8 @@ export async function matchRoutes(app: FastifyInstance, ctx: RouteContext): Prom
       config: ctx.rateLimit(ctx.limits?.writePerWindow),
       schema: {
         ...idParams,
+        tags: ["matches"],
+        summary: "Record a result and get the updated board back",
         body: {
           type: "object",
           required: ["opponentId", "result"],
@@ -50,7 +56,13 @@ export async function matchRoutes(app: FastifyInstance, ctx: RouteContext): Prom
 
   app.delete<{ Params: { id: string; matchId: string } }>(
     "/workspaces/:id/matches/:matchId",
-    { schema: { params: { type: "object", properties: { id: ID_SCHEMA, matchId: ID_SCHEMA } } } },
+    {
+      schema: {
+        tags: ["matches"],
+        summary: "Undo a match and give both players their points back (owner only)",
+        params: { type: "object", properties: { id: ID_SCHEMA, matchId: ID_SCHEMA } },
+      },
+    },
     async (req, reply) => {
       const { user, workspaceId } = await ctx.asOwner(req);
       const matchId = Number(req.params.matchId);
