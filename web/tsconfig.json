@@ -33,7 +33,9 @@
         "./node_modules/@types/react-dom/client"
       ]
     },
-    "noEmit": true
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": [
     "src",

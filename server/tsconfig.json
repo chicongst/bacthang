@@ -8,7 +8,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
-  "include": ["src", "test", "drizzle.config.ts"]
+  "include": [
+    "src",
+    "test",
+    "drizzle.config.ts"
+  ]
 }

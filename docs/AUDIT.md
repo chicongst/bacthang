@@ -79,3 +79,52 @@ Ngoài ra chưa có `.gitignore` ở gốc, chưa có LICENSE, chưa có CI.
 - Token phiên chỉ lưu hash trong DB.
 - `Platform` tách web và extension gọn gàng, dùng chung 100% giao diện.
 - 84 test chạy trên Postgres thật, có test song song và test ranh giới nửa đêm.
+
+---
+
+# Review lần hai — sau khi sửa
+
+Ngày: 2026-09-29 · Tất cả thay đổi đã chạy trên production và dữ liệu thật còn nguyên (8 người, 31 trận).
+
+## Bảng điểm mới
+
+| # | Tiêu chí | Trước | Sau | Đã làm gì |
+|---|---|---|---|---|
+| 1 | Architecture | 6 | **9** | `app.ts` 356 → 130 dòng, tách `http/routes/{auth,workspaces,members,matches,events}`; `workspaces.ts` 330 → 3 module (`workspaces`, `memberships`, `board`); `RankingApp` 354 → 193 dòng, tách `useSession`, `useWorkspace`, `WorkspaceSwitcher` |
+| 2 | Clean Code | 6 | **9** | Bỏ comment kể lại code (còn 1,5% số dòng, chỉ giữ mẹo và ràng buộc ngoài); bỏ lớp bọc thừa; bật `noUnusedLocals` ở cả ba package |
+| 3 | SOLID | 7 | **8** | `onServerChanged` từ biến toàn cục thành một phương thức của `Platform`, tiêm vào được nên test được |
+| 4 | Design Patterns | 7 | **8** | Thêm `RouteContext` làm một điểm phụ thuộc duy nhất cho mọi route |
+| 5 | Performance | 4 | **9** | Gộp N+1 thành một truy vấn `GROUP BY`; bỏ một vòng mạng thừa khi ghi trận (POST trả luôn cả bảng) |
+| 6 | Security | 4 | **8** | Rate limit toàn cục 300/phút, đăng nhập 10/phút, ghi 40/phút; trần 5 kênh SSE mỗi người; trần 20 workspace mỗi người; `trustProxy` để tính đúng IP sau Caddy |
+| 7 | Naming | 8 | **9** | `remainingTodayBetween` → `remainingTodayByOpponent` (nói đúng việc nó làm); `tierDto` → `tierSummary` về domain |
+| 8 | Folder Structure | 5 | **9** | Xóa thư mục build khỏi repo; thêm `.gitignore`, `LICENSE` (MIT), CI GitHub Actions, `CLAUDE.md` |
+| 9 | Dependency Injection | 7 | **9** | Hết biến toàn cục; `db`, `now`, `bus`, `limits`, `discord` đều tiêm; test dựng app với giới hạn riêng |
+| 10 | Async/Await | 8 | **8** | Không đổi — vốn đã đúng |
+| 11 | Error Handling | 6 | **8** | 404 dùng chung khuôn `{error:{code,message}}`; 429 có mã riêng `RATE_LIMITED` thay vì bị gán nhầm `VALIDATION` |
+| 12 | Logging | 5 | **8** | Log có cấu trúc cho mọi hành động đổi dữ liệu: `auth.login`, `workspace.created/joined/left/updated`, `member.approved/removed`, `match.recorded/deleted` |
+| 13 | Validation | 7 | **9** | Giới hạn tên workspace về một nguồn duy nhất trong `domain/rules.ts`, schema route và service dùng chung |
+| 14 | Testability | 6 | **9** | Thêm 16 test giao diện (vitest + testing-library), trong đó có test tái hiện đúng lỗi "kẹt Đang tải" từng lọt ra production |
+| 15 | Maintainability | 6 | **9** | File lớn nhất còn 367 dòng và đó là từ điển ngôn ngữ; `CLAUDE.md` ghi rõ quy ước cho người mới |
+| 16 | Scalability | 6 | **7** | Dọn session hết hạn khi đăng nhập; EventBus vẫn trong tiến trình (đã ghi rõ giới hạn và cách thay) |
+| 17 | Database Design | 7 | **8** | Không đổi schema; bỏ được N+1 nhờ gộp truy vấn |
+| 18 | API Design | 6 | **8** | Khuôn lỗi thống nhất mọi đường; `POST /matches` trả luôn bảng mới nên client không phải gọi thêm |
+| 19 | Domain Modeling | 7 | **8** | `tierSummary`, `WORKSPACE_NAME_*`, `MAX_WORKSPACES_PER_OWNER` về đúng tầng domain |
+| 20 | Overall | 6 | **8** | median 19 tiêu chí = 8, không còn BLOCKER và MAJOR |
+
+**Verdict: READY** — không còn BLOCKER hay MAJOR.
+
+## Kiểm chứng
+
+- **103 test**: 87 ở server (Postgres thật, gồm test song song, ranh giới nửa đêm, rate limit, trần kênh SSE),
+  16 ở giao diện (i18n, luồng ghi trận, vỏ ứng dụng).
+- Ba package typecheck sạch với `noUnusedLocals` và `noUnusedParameters`.
+- Kiểm tra trên production sau mỗi đợt deploy: `/health`, khuôn lỗi 404, header rate limit, dữ liệu còn nguyên.
+
+## Còn nợ, có chủ ý
+
+| Việc | Vì sao hoãn |
+|---|---|
+| EventBus chạy nhiều tiến trình | Cần Postgres `LISTEN/NOTIFY` hoặc Redis. Chỉ sửa một file `events.ts`. Chưa cần ở quy mô một nhóm chơi |
+| Phân trang cho `/matches` và `/workspaces/search` | Đang giới hạn cứng 30 và 20. Chưa có nhóm nào chạm ngưỡng |
+| Versioning cho API (`/v1`) | Chỉ có hai máy khách và ta kiểm soát cả hai; đã có header `x-app-version` để báo bản cũ |
+| Index riêng cho truy vấn đếm theo cặp | Hai index sẵn có phục vụ được. Thêm index mà chưa đo là đoán mò |

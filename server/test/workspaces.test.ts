@@ -3,20 +3,9 @@ import type pg from "pg";
 import type { Db } from "../src/db/client.js";
 import { AppError } from "../src/errors.js";
 import { recordMatch, matchesToday } from "../src/services/matches.js";
-import {
-  approveMember,
-  leaveWorkspace,
-  createWorkspace,
-  getBoard,
-  joinWorkspace,
-  listMembers,
-  myWorkspaces,
-  removeMember,
-  requireMember,
-  requireOwner,
-  searchWorkspaces,
-  updateWorkspace,
-} from "../src/services/workspaces.js";
+import { createWorkspace, searchWorkspaces, updateWorkspace } from "../src/services/workspaces.js";
+import { approveMember, joinWorkspace, leaveWorkspace, listMembers, myWorkspaces, removeMember, requireMember, requireOwner } from "../src/services/memberships.js";
+import { getBoard } from "../src/services/board.js";
 import { addMember, makeUser, makeWorkspace, memberOf, openTestDb, resetDb } from "./helpers.js";
 import { MAX_WORKSPACES_PER_OWNER } from "../src/domain/rules.js";
 

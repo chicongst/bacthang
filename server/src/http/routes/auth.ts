@@ -3,7 +3,7 @@ import type { RouteContext } from "../context.js";
 import { AppError } from "../../errors.js";
 import { createSession, revokeSession } from "../../services/sessions.js";
 import { upsertDiscordUser } from "../../services/users.js";
-import { myWorkspaces } from "../../services/workspaces.js";
+import { myWorkspaces } from "../../services/memberships.js";
 
 export async function authRoutes(app: FastifyInstance, ctx: RouteContext): Promise<void> {
   app.post<{ Body: { code: string; redirectUri: string } }>(

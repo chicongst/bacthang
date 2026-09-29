@@ -17,7 +17,7 @@ import { memberRoutes } from "./http/routes/members.js";
 import { workspaceRoutes } from "./http/routes/workspaces.js";
 import type { DiscordClient } from "./services/discord.js";
 import { userForToken } from "./services/sessions.js";
-import { requireMember, requireOwner } from "./services/workspaces.js";
+import { requireMember, requireOwner } from "./services/memberships.js";
 
 export { DEFAULT_LIMITS, type Limits } from "./http/context.js";
 

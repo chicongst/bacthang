@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { ID_SCHEMA, type IdParams, type RouteContext } from "../context.js";
-import { approveMember, listMembers, removeMember } from "../../services/workspaces.js";
+import { approveMember, listMembers, removeMember } from "../../services/memberships.js";
 
 type MemberParams = { Params: { id: string; userId: string } };
 const memberParams = { params: { type: "object", properties: { id: ID_SCHEMA, userId: ID_SCHEMA } } } as const;

@@ -2,10 +2,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import type { Db } from "../src/db/client.js";
-import { users } from "../src/db/schema.js";
 import { deleteMatch, recentMatches, recordMatch, matchesToday, matchesTodayBetween } from "../src/services/matches.js";
 import { AppError } from "../src/errors.js";
-import { makeClub, makeUser, makeWorkspace, memberOf, openTestDb, resetDb } from "./helpers.js";
+import { makeClub, makeUser, memberOf, openTestDb, resetDb } from "./helpers.js";
 
 let db: Db;
 let pool: pg.Pool;

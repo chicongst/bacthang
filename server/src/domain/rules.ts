@@ -19,8 +19,6 @@ export interface Tier {
   minPoints: number;
 }
 
-export const TIER_STEP = 100;
-
 // Phải xếp từ cao xuống thấp: tierFor lấy mốc đầu tiên mà điểm đạt tới.
 const TIERS: Tier[] = [
   { id: "master", name: "Cao Thủ", minPoints: 1400 },
@@ -49,4 +47,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function vnDayRange(now: Date): { start: Date; end: Date } {
   const startMs = Math.floor((now.getTime() + VN_OFFSET_MS) / DAY_MS) * DAY_MS - VN_OFFSET_MS;
   return { start: new Date(startMs), end: new Date(startMs + DAY_MS) };
+}
+
+/** Dạng rút gọn gửi cho giao diện: giao diện tự dịch tên theo id. */
+export function tierSummary(points: number): { id: TierId; name: string } {
+  const { id, name } = tierFor(points);
+  return { id, name };
 }

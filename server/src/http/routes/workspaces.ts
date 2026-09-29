@@ -1,14 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { ID_SCHEMA, type IdParams, type RouteContext } from "../context.js";
 import { WORKSPACE_NAME_MAX, WORKSPACE_NAME_MIN } from "../../domain/rules.js";
-import {
-  createWorkspace,
-  getBoard,
-  joinWorkspace,
-  leaveWorkspace,
-  searchWorkspaces,
-  updateWorkspace,
-} from "../../services/workspaces.js";
+import { createWorkspace, searchWorkspaces, updateWorkspace } from "../../services/workspaces.js";
+import { joinWorkspace, leaveWorkspace } from "../../services/memberships.js";
+import { getBoard } from "../../services/board.js";
 
 const NAME = { type: "string", minLength: WORKSPACE_NAME_MIN, maxLength: WORKSPACE_NAME_MAX } as const;
 const idParams = { params: { type: "object", properties: { id: ID_SCHEMA } } } as const;

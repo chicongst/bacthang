@@ -154,17 +154,32 @@ Popup sẽ tự đóng khi cửa sổ Discord mở ra, đó là hành vi bình t
   trang web build lại luôn trong cùng lệnh đó.
 - **Extension**: `npm run build` → vào `chrome://extensions` bấm nút tải lại ở thẻ extension. Gửi lại zip cho bạn bè.
 
+## Đóng góp
+
+Quy ước dự án nằm ở [`CLAUDE.md`](CLAUDE.md) — đọc trước khi sửa code. Điểm quan trọng nhất:
+**không viết comment kể lại việc code đang làm**, chỉ giải thích mẹo, ràng buộc bên ngoài hoặc lý do nghiệp vụ.
+
+Kết quả chấm chất lượng theo 20 tiêu chí: [`docs/AUDIT.md`](docs/AUDIT.md).
+
 ## Phát triển
 
 ```bash
 cd server
 npm install
 npm run db:test    # bật Postgres test trong Docker (cổng 54329)
-npm test           # 83 test: luật điểm, giới hạn ngày, ghi song song, đăng nhập,
+npm test           # 87 test: luật điểm, giới hạn ngày, ghi song song, đăng nhập,
                    #          workspace công khai/riêng tư, duyệt, đuổi, phân quyền,
                    #          kênh sự kiện realtime
 npm run typecheck
 docker stop bida-ranking-testdb   # xong thì tắt
+```
+
+Giao diện có test riêng, không cần database:
+
+```bash
+cd web
+npm install
+npm test           # 16 test: i18n, luồng ghi trận, vỏ ứng dụng
 ```
 
 Xem thử giao diện với dữ liệu mẫu, không cần server hay Discord: chạy `npx vite` trong `web/` (hoặc

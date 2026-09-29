@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { ID_SCHEMA, type IdParams, type RouteContext } from "../context.js";
 import { deleteMatch, recentMatches, recordMatch } from "../../services/matches.js";
-import { getBoard } from "../../services/workspaces.js";
+import { getBoard } from "../../services/board.js";
 
 const RECENT_LIMIT = 30;
 const idParams = { params: { type: "object", properties: { id: ID_SCHEMA } } } as const;
