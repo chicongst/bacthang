@@ -1,5 +1,5 @@
 # Build from the ranking/ root, because web shares the UI in app/
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /src
 COPY web/package.json web/package-lock.json ./web/
 RUN cd web && npm ci
