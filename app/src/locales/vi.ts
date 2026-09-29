@@ -119,7 +119,7 @@ export const vi = {
   "group.settings": "Cài đặt",
   "group.name": "Tên workspace",
   "group.tournament": "Tên giải",
-  "group.tournamentPlaceholder": "Ví dụ: Hodfords Billiards Championship",
+  "group.tournamentPlaceholder": "Ví dụ: Giải vô địch mùa xuân 2026",
   "group.tournamentHint": "Hiện ngay trên bảng xếp hạng. Để trống thì ẩn đi.",
   "group.save": "Lưu",
   "group.failed": "Không thực hiện được.",

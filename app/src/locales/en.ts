@@ -121,7 +121,7 @@ export const en: Record<Key, string> = {
   "group.settings": "Settings",
   "group.name": "Workspace name",
   "group.tournament": "Tournament name",
-  "group.tournamentPlaceholder": "For example: Hodfords Billiards Championship",
+  "group.tournamentPlaceholder": "For example: Spring Championship 2026",
   "group.tournamentHint": "Shown right above the board. Leave it empty to hide it.",
   "group.save": "Save",
   "group.failed": "That didn't work.",

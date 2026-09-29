@@ -103,7 +103,7 @@ button:disabled { cursor: default; }
 /* ---------------- me card ---------------- */
 /* A championship nameplate, in the spirit of a game rank plate: bevelled gold frame,
    emblem caps at both ends, a sheen that sweeps across, and a few slow sparks. */
-.plate-wrap { display: flex; justify-content: center; padding: 12px 12px 2px; }
+.plate-wrap { display: flex; justify-content: center; padding: 12px 12px 6px; }
 .plate {
   position: relative;
   display: flex; align-items: stretch; max-width: 100%;
@@ -116,15 +116,19 @@ button:disabled { cursor: default; }
     0 6px 16px -6px rgba(0, 0, 0, .75),
     0 0 22px -8px color-mix(in oklab, var(--brass) 70%, transparent);
 }
+/* Dark caps with solid gold marks. Gold-on-gold with a dark outline turned muddy
+   at this size; the contrast has to come from the background, not from a stroke. */
 .plate-cap {
   flex: none; width: 30px; display: grid; place-items: center;
   border-radius: 6px;
-  background: linear-gradient(180deg, #F2C64B 0%, #B07C14 55%, #7A5209 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(0, 0, 0, .35);
+  background: linear-gradient(180deg, #2A6B58 0%, #14453A 52%, #0B2C25 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brass) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -2px 5px rgba(0, 0, 0, .5);
 }
 .plate-cap svg {
-  width: 16px; height: 16px; fill: none;
-  stroke: #3B2705; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  width: 17px; height: 17px; stroke: none;
+  fill: #FFE08A;
+  filter: drop-shadow(0 0 4px color-mix(in oklab, var(--brass) 65%, transparent));
 }
 .plate-face {
   position: relative; overflow: hidden; min-width: 0;
@@ -155,7 +159,7 @@ button:disabled { cursor: default; }
 .plate-spark {
   position: absolute; fill: #FFF6D2; pointer-events: none;
   filter: drop-shadow(0 0 4px rgba(255, 224, 138, .9));
-  opacity: 0; animation: plate-spark 3.2s ease-in-out infinite;
+  opacity: 0; animation: plate-spark 2.6s ease-in-out infinite;
 }
 @keyframes plate-shine {
   0% { background-position: 150% 0; }
@@ -164,9 +168,9 @@ button:disabled { cursor: default; }
 /* Four sparks on one 3.2s cycle, staggered by 0.8s: at any moment one is lit, so the
    plate always glitters instead of looking dead between flashes. */
 @keyframes plate-spark {
-  0%, 30%, 100% { opacity: 0; transform: scale(.35) rotate(0deg); }
-  12% { opacity: 1; transform: scale(1.15) rotate(45deg); }
-  20% { opacity: .55; transform: scale(.8) rotate(70deg); }
+  0%, 42%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); }
+  14% { opacity: 1; transform: scale(1.2) rotate(45deg); }
+  28% { opacity: .5; transform: scale(.75) rotate(75deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .plate-shine, .plate-spark { animation: none; }
@@ -229,6 +233,16 @@ button:disabled { cursor: default; }
   pointer-events: none;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55));
 }
+.crest-spark {
+  fill: #FFFDF2; transform-box: fill-box; transform-origin: center;
+  opacity: 0; animation: plate-spark 2.6s ease-in-out infinite;
+  /* Cream on gold disappears; the glow is what separates the spark from the wing. */
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 7px rgba(255, 224, 138, .95));
+}
+@media (prefers-reduced-motion: reduce) {
+  .crest-spark { animation: none; opacity: .8; }
+}
+
 .crest-1 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 9px rgba(217, 167, 44, .45)); }
 .crest-2 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 7px rgba(200, 214, 224, .3)); }
 .crest-3 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 7px rgba(192, 127, 74, .3)); }

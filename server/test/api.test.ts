@@ -342,11 +342,11 @@ describe("the tournament name", () => {
       method: "PATCH",
       url: `/workspaces/${ws.id}`,
       headers: owner.headers,
-      payload: { tournamentName: "  Hodfords Billiards Championship  " },
+      payload: { tournamentName: "  Spring Championship 2026  " },
     });
 
     const after = await app.inject({ method: "GET", url: `/workspaces/${ws.id}/board`, headers: owner.headers });
-    expect(after.json().workspace.tournamentName).toBe("Hodfords Billiards Championship");
+    expect(after.json().workspace.tournamentName).toBe("Spring Championship 2026");
   });
 
   it("an empty string takes the banner back down", async () => {

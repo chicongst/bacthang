@@ -60,7 +60,7 @@ export const board: Board = {
   workspace: {
     id: 1,
     name: "CLB Quận 1",
-    tournamentName: "Hodfords Billiards Championship",
+    tournamentName: "Giải Vô Địch Mùa Xuân 2026",
     isPublic: true,
     memberCount: players.length,
   },

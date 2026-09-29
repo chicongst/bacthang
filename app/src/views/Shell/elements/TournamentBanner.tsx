@@ -1,8 +1,12 @@
 const SPARKS = [
-  { top: "-7%", left: "11%", size: 10, delay: "0s" },
-  { top: "58%", left: "31%", size: 7, delay: "0.8s" },
-  { top: "-4%", left: "58%", size: 8, delay: "1.6s" },
-  { top: "62%", left: "84%", size: 9, delay: "2.4s" },
+  { top: "-8%", left: "9%", size: 10, delay: "0s" },
+  { top: "56%", left: "23%", size: 7, delay: "0.35s" },
+  { top: "-5%", left: "41%", size: 8, delay: "0.7s" },
+  { top: "60%", left: "57%", size: 6, delay: "1.05s" },
+  { top: "-7%", left: "72%", size: 9, delay: "1.4s" },
+  { top: "58%", left: "88%", size: 7, delay: "1.75s" },
+  { top: "26%", left: "3%", size: 6, delay: "2.1s" },
+  { top: "24%", left: "95%", size: 6, delay: "2.45s" },
 ];
 
 export function TournamentBanner({ name }: { name: string | null }) {
@@ -35,8 +39,8 @@ export function TournamentBanner({ name }: { name: string | null }) {
 function Crown() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 9l4 3 5-7 5 7 4-3-2 10H5L3 9Z" />
-      <path d="M5 19h14" />
+      <path d="M2.5 7.5 7 11.2 12 3.2l5 8L21.5 7.5 19.4 18H4.6L2.5 7.5Z" />
+      <rect x="4.4" y="19.2" width="15.2" height="2.2" rx="1.1" />
     </svg>
   );
 }

@@ -21,10 +21,10 @@ describe("the tournament banner", () => {
 
   it("shows the name as a heading when there is one", async () => {
     const board = makeBoard();
-    board.workspace.tournamentName = "Hodfords Billiards Championship";
+    board.workspace.tournamentName = "Spring Championship 2026";
     renderApp(makePlatform({ board }));
 
-    expect(await screen.findByRole("heading", { name: "Hodfords Billiards Championship" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Spring Championship 2026" })).toBeInTheDocument();
   });
 });
 
