@@ -109,7 +109,7 @@ jobs:
           tags: |
             type=sha,format=long
             type=raw,value=latest
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           # Both images build from the repository root: one lockfile, one shared UI.
           context: .
