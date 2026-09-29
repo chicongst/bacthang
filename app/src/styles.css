@@ -244,7 +244,26 @@ button:disabled { cursor: default; }
   .crest-spark { animation: none; opacity: .8; }
 }
 
-.crest-1 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 9px rgba(217, 167, 44, .45)); }
+.crest-rays {
+  fill: #FFE08A; opacity: .17;
+  transform-box: fill-box; transform-origin: center;
+  animation: crest-spin 26s linear infinite;
+}
+@keyframes crest-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crest-rays { animation: none; }
+}
+
+.crest-1 { animation: crest-halo 3.4s ease-in-out infinite; }
+@keyframes crest-halo {
+  0%, 100% { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 8px rgba(217, 167, 44, .4)); }
+  50% { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 17px rgba(255, 214, 92, .75)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crest-1 { animation: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 9px rgba(217, 167, 44, .45)); }
+}
 .crest-2 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 7px rgba(200, 214, 224, .3)); }
 .crest-3 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 7px rgba(192, 127, 74, .3)); }
 .step-name { font-size: 12px; font-weight: 700; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

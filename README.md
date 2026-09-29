@@ -1,11 +1,11 @@
-# Nấc Thang
+# Bậc Thang
 
-[![CI](https://github.com/megatron-cong/nacthang/actions/workflows/ci.yml/badge.svg)](https://github.com/megatron-cong/nacthang/actions/workflows/ci.yml)
+[![CI](https://github.com/chicongst/bacthang/actions/workflows/ci.yml/badge.svg)](https://github.com/chicongst/bacthang/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Tests](https://img.shields.io/badge/tests-119-brightgreen)
 ![Coverage](https://img.shields.io/badge/server%20coverage-93%25%20lines-brightgreen)
 
-*Nấc thang* is Vietnamese for the rung of a ladder, which is what this is: a scoring and
+*Bậc thang* is Vietnamese for a step on a staircase, which is what this is: a scoring and
 rank-climbing board for a group that competes at something: billiards, badminton, chess,
 board games, anything. It runs as a web app and people sign in with Discord.
 
@@ -112,7 +112,7 @@ curl https://<API_DOMAIN>/health     # {"ok":true}
 Caddy needs about half a minute on first boot to obtain a certificate. The API applies its
 migrations from `server/drizzle/` on startup, so there is no separate migration step.
 
-Pre-built images are published to `ghcr.io/megatron-cong/nacthang/api` and `.../web` on every push
+Pre-built images are published to `ghcr.io/chicongst/bacthang/api` and `.../web` on every push
 to `main`, for both amd64 and arm64, if you would rather not build on the server.
 
 `ADMIN_DISCORD_IDS` is a **server admin** list, not a workspace owner list: anyone in it has owner

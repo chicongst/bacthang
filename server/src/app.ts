@@ -27,7 +27,7 @@ export { DEFAULT_LIMITS, type Limits } from "./http/context.js";
 export const OPENAPI: Partial<OpenAPIV3_1.Document> = {
   openapi: "3.1.0",
   info: {
-    title: "Nấc Thang API",
+    title: "Bậc Thang API",
     description:
       "Scoring and ranking for a group that competes. Every route except /health and /auth/discord " +
       "needs a session token, and every route inside a workspace checks membership on the server.",

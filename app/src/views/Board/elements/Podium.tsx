@@ -19,7 +19,7 @@ export function Podium({ top, meId }: { top: Player[]; meId: number }) {
         return (
           <li key={player.id} className={`step step-${player.rank} ${player.id === meId ? "is-me" : ""}`}>
             <span className="crest-wrap">
-              {isPlace(player.rank) && <RankCrest place={player.rank} width={size * 2.3} />}
+              {isPlace(player.rank) && <RankCrest place={player.rank} width={size * 2.3} seed={player.id} />}
               <PlayerTip player={player} isMe={player.id === meId}>
                 <Avatar name={player.name} url={player.avatarUrl} size={size} tier={player.tier.id} />
               </PlayerTip>

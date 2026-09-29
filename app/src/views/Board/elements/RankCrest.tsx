@@ -28,20 +28,41 @@ const spark = (x: number, y: number, r: number) =>
   `Q${x - r * 0.26} ${y + r * 0.26} ${x - r} ${y}` +
   `Q${x - r * 0.26} ${y - r * 0.26} ${x} ${y - r}Z`;
 
-const SPARKS = [
-  { d: spark(150, 16, 11), delay: "0s" },
-  { d: spark(12, 28, 9), delay: "0.4s" },
-  { d: spark(126, 74, 8), delay: "0.8s" },
-  { d: spark(34, 66, 8.5), delay: "1.2s" },
-  { d: spark(46, 16, 7), delay: "1.6s" },
-  { d: spark(104, 30, 6), delay: "2s" },
-];
+/**
+ * Seeded, not Math.random(): the board re-renders on every live event, and a fresh
+ * roll each time would make the sparks jump around. Same player, same constellation.
+ */
+function rng(seed: number): () => number {
+  let state = (seed * 2654435761) % 2147483647;
+  if (state <= 0) state += 2147483646;
+  return () => {
+    state = (state * 48271) % 2147483647;
+    return state / 2147483647;
+  };
+}
 
-export function RankCrest({ place, width }: { place: Place; width: number }) {
+function sparksFor(seed: number, count: number) {
+  const next = rng(seed + 7);
+  return Array.from({ length: count }, () => {
+    const angle = next() * Math.PI * 2;
+    const distance = 46 + next() * 26;
+    return {
+      d: spark(80 + Math.cos(angle) * distance, 60 + Math.sin(angle) * distance * 0.76, 5 + next() * 6),
+      delay: `${(next() * 2.6).toFixed(2)}s`,
+      duration: `${(2.2 + next() * 1.3).toFixed(2)}s`,
+    };
+  });
+}
+
+// The winner gets a ray burst behind the crest. Twelve wedges, rotating slowly.
+const RAYS = Array.from({ length: 12 }, (_, i) => i * 30);
+
+export function RankCrest({ place, width, seed }: { place: Place; width: number; seed: number }) {
   const uid = useId().replace(/:/g, "");
   const [rim, body, deep, edge] = COLORS[place];
   const fill = `f${uid}`;
   const gloss = `g${uid}`;
+  const sparks = sparksFor(seed, place === 1 ? 9 : 5);
 
   return (
     <svg
@@ -63,6 +84,14 @@ export function RankCrest({ place, width }: { place: Place; width: number }) {
         </linearGradient>
       </defs>
 
+      {place === 1 && (
+        <g className="crest-rays">
+          {RAYS.map((angle) => (
+            <path key={angle} d="M80 60L77 4L83 4Z" transform={`rotate(${angle} 80 60)`} />
+          ))}
+        </g>
+      )}
+
       <circle {...RING} fill="none" stroke={edge} strokeWidth="7.5" />
       <circle {...RING} fill="none" stroke={`url(#${fill})`} strokeWidth="4.5" />
 
@@ -79,8 +108,13 @@ export function RankCrest({ place, width }: { place: Place; width: number }) {
         </g>
       </g>
 
-      {SPARKS.map((s) => (
-        <path key={s.d} className="crest-spark" d={s.d} style={{ animationDelay: s.delay }} />
+      {sparks.map((s) => (
+        <path
+          key={s.d}
+          className="crest-spark"
+          d={s.d}
+          style={{ animationDelay: s.delay, animationDuration: s.duration }}
+        />
       ))}
 
       <g fill={`url(#${gloss})`} stroke="none">
