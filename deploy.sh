@@ -63,7 +63,12 @@ say "Copying the source to $REMOTE_DIR"
 remote "mkdir -p $REMOTE_DIR"
 # --delete keeps the server free of files you removed locally. Backups live in
 # $BACKUP_DIR, outside this path, so they survive it.
-rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
+#
+# --inplace matters more than it looks: compose bind-mounts deploy/Caddyfile as a
+# single file, and a bind mount follows the inode. Without it rsync writes a new
+# file and renames, the container keeps reading the deleted inode, and every edit
+# to the Caddyfile is silently ignored for the life of the container.
+rsync -az --delete --inplace -e "ssh ${SSH_OPTS[*]}" \
   --exclude node_modules --exclude dist --exclude .git --exclude .env \
   "$LOCAL_DIR/" "$HOST:$REMOTE_DIR/"
 
@@ -90,6 +95,11 @@ fi
 
 say "Building and starting the containers"
 remote "cd $REMOTE_DIR/deploy && docker compose up -d --build"
+
+# The Caddyfile is a bind mount, so compose sees no change when it is edited and
+# leaves the container alone. Reload it explicitly or header changes never land.
+say "Reloading Caddy"
+remote "cd $REMOTE_DIR/deploy && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"
 
 say "Waiting for the API"
 DOMAIN="$(remote "grep -E '^API_DOMAIN=' $REMOTE_DIR/deploy/.env | cut -d= -f2-" | tr -d '\r')"
