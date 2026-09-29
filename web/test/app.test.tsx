@@ -16,7 +16,7 @@ describe("the tournament banner", () => {
     renderApp(makePlatform({ board: makeBoard() }));
 
     expect(await screen.findByRole("tab", { name: /Bảng/ })).toBeInTheDocument();
-    expect(document.querySelector(".trophy-banner")).toBeNull();
+    expect(document.querySelector(".plate")).toBeNull();
   });
 
   it("shows the name as a heading when there is one", async () => {

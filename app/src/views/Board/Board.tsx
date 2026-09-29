@@ -1,30 +1,9 @@
-import type { Player } from "@app/types.js";
 import { Avatar } from "@app/components/Avatar.js";
+import { PlayerTip } from "@app/components/PlayerTip.js";
 import { TierBadge } from "@app/components/TierBadge.js";
 import { useLang } from "@app/i18n.js";
-import { PlayerTip } from "@app/components/PlayerTip.js";
-
-function Podium({ top, meId }: { top: Player[]; meId: number }) {
-  const { t, tierName } = useLang();
-  const order = [top[1], top[0], top[2]].filter((entry): entry is Player => !!entry);
-  return (
-    <ol className="podium">
-      {order.map((player) => (
-        <li key={player.id} className={`step step-${player.rank} ${player.id === meId ? "is-me" : ""}`}>
-          <PlayerTip player={player} isMe={player.id === meId}>
-            <Avatar name={player.name} url={player.avatarUrl} size={player.rank === 1 ? 52 : 42} tier={player.tier.id} />
-          </PlayerTip>
-          <div className="step-name" title={player.name}>{player.name}</div>
-          <div className="step-points">
-            <TierBadge tier={player.tier.id} size={16} title={tierName(player.tier.id)} />
-            <span className="num">{player.points}</span>
-          </div>
-          <div className="plinth num" aria-label={t("board.rank", { n: player.rank })}>{player.rank}</div>
-        </li>
-      ))}
-    </ol>
-  );
-}
+import type { Player } from "@app/types.js";
+import { Podium } from "./elements/Podium.js";
 
 export function Board({ players, meId }: { players: Player[]; meId: number }) {
   const { t, tierName } = useLang();

@@ -1,5 +1,5 @@
 import type { Board, MatchResult, RecentMatch, Tab } from "@app/types.js";
-import { Board as BoardView } from "@app/views/Board.js";
+import { Board as BoardView } from "@app/views/Board/index.js";
 import { Group } from "@app/views/Group/index.js";
 import { Recent } from "@app/views/Recent.js";
 import { Record } from "@app/views/Record/index.js";

@@ -101,40 +101,81 @@ button:disabled { cursor: default; }
 .icon-btn svg, .trash svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------------- me card ---------------- */
-.trophy-banner {
-  display: flex; align-items: center; justify-content: center; gap: 9px;
-  padding: 13px 14px 3px;
+/* A championship nameplate, in the spirit of a game rank plate: bevelled gold frame,
+   emblem caps at both ends, a sheen that sweeps across, and a few slow sparks. */
+.plate-wrap { display: flex; justify-content: center; padding: 12px 12px 2px; }
+.plate {
+  position: relative;
+  display: flex; align-items: stretch; max-width: 100%;
+  border-radius: 8px;
+  padding: 2px;
+  background: linear-gradient(180deg, #FFE9A8 0%, var(--brass) 38%, #8A5F10 100%);
+  box-shadow:
+    0 0 0 1px #4A3208,
+    0 2px 0 #3A2706,
+    0 6px 16px -6px rgba(0, 0, 0, .75),
+    0 0 22px -8px color-mix(in oklab, var(--brass) 70%, transparent);
 }
-.trophy-rule {
-  flex: 1 1 auto; max-width: 74px; height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--brass) 55%, transparent));
+.plate-cap {
+  flex: none; width: 30px; display: grid; place-items: center;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #F2C64B 0%, #B07C14 55%, #7A5209 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(0, 0, 0, .35);
 }
-.trophy-rule:last-child { transform: scaleX(-1); }
-.trophy-mark { flex: none; display: grid; place-items: center; }
-.trophy-mark svg {
-  width: 15px; height: 15px; fill: none;
-  stroke: color-mix(in oklab, var(--brass) 80%, transparent);
-  stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+.plate-cap svg {
+  width: 16px; height: 16px; fill: none;
+  stroke: #3B2705; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
 }
-.trophy-mark-right { transform: scaleX(-1); }
-.trophy-name {
-  margin: 0; flex: 0 1 auto; min-width: 0;
+.plate-face {
+  position: relative; overflow: hidden; min-width: 0;
+  display: flex; align-items: center;
+  margin: 0 2px; padding: 7px 14px; min-height: 34px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #2A6B58 0%, #14453A 52%, #0B2C25 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 -2px 6px rgba(0, 0, 0, .55);
+}
+.plate-name {
+  margin: 0; min-width: 0;
   font-family: "Big Shoulders Display", "Be Vietnam Pro", sans-serif;
-  font-size: 19px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
-  text-align: center; text-wrap: balance;
-  /* The sheen rides across the letters, so the fill has to be the text itself. */
-  background: linear-gradient(100deg, #A87A18 0%, var(--brass) 28%, #FFF0C2 46%, var(--brass) 64%, #A87A18 100%);
-  background-size: 260% 100%;
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
-  animation: trophy-sheen 7s linear infinite;
+  font-size: 20px; line-height: 1.15; font-weight: 800;
+  letter-spacing: .1em; text-transform: uppercase;
+  /* A championship title should wrap rather than lose its last word to an ellipsis. */
+  text-align: center; text-wrap: balance; overflow-wrap: anywhere;
+  background: linear-gradient(180deg, #FFF7DC 0%, #FFE08A 45%, var(--brass) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  /* The clipped gradient kills text-shadow, so the emboss is drawn underneath. */
+  filter: drop-shadow(0 1px 0 #3A2706) drop-shadow(0 0 7px color-mix(in oklab, var(--brass) 45%, transparent));
 }
-@keyframes trophy-sheen {
-  from { background-position: 180% 0; }
-  to { background-position: -80% 0; }
+.plate-shine {
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .34) 48%, transparent 58%);
+  background-size: 300% 100%;
+  animation: plate-shine 5.5s ease-in-out infinite;
+}
+.plate-spark {
+  position: absolute; fill: #FFF6D2; pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(255, 224, 138, .9));
+  opacity: 0; animation: plate-spark 3.2s ease-in-out infinite;
+}
+@keyframes plate-shine {
+  0% { background-position: 150% 0; }
+  55%, 100% { background-position: -50% 0; }
+}
+/* Four sparks on one 3.2s cycle, staggered by 0.8s: at any moment one is lit, so the
+   plate always glitters instead of looking dead between flashes. */
+@keyframes plate-spark {
+  0%, 30%, 100% { opacity: 0; transform: scale(.35) rotate(0deg); }
+  12% { opacity: 1; transform: scale(1.15) rotate(45deg); }
+  20% { opacity: .55; transform: scale(.8) rotate(70deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .trophy-name { animation: none; background-position: 46% 0; }
+  .plate-shine, .plate-spark { animation: none; }
+  .plate-spark { opacity: .85; }
+}
+@media (max-width: 380px) {
+  .plate-name { font-size: 17px; letter-spacing: .06em; }
+  .plate-face { padding: 0 9px; }
+  .plate-cap { width: 26px; }
 }
 
 .me {
@@ -177,6 +218,20 @@ button:disabled { cursor: default; }
   display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 6px;
 }
 .step { display: grid; justify-items: center; gap: 5px; min-width: 0; }
+/* The crest sits behind the avatar and overflows its box on purpose, so the blades
+   reach past the row without taking layout space. */
+/* The crest hangs below the avatar by about 12px, so the name needs that much room
+   or the bottom gem lands on it. */
+.crest-wrap { position: relative; display: grid; place-items: center; isolation: isolate; margin-bottom: 11px; }
+.crest-wrap > :not(.crest) { position: relative; z-index: 1; }
+.crest {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50.85%);
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55));
+}
+.crest-1 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 9px rgba(217, 167, 44, .45)); }
+.crest-2 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 7px rgba(200, 214, 224, .3)); }
+.crest-3 { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)) drop-shadow(0 0 7px rgba(192, 127, 74, .3)); }
 .step-name { font-size: 12px; font-weight: 700; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .step-1 .step-name { font-size: 13px; }
 .step-points { display: flex; align-items: center; gap: 3px; font-size: 17px; font-weight: 800; }
