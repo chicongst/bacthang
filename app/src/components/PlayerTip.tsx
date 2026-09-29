@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
-import type { Player } from "../types.js";
-import { useLang } from "../i18n.js";
+import type { Player } from "@app/types.js";
+import { useLang } from "@app/i18n.js";
 
-/** position: fixed để thẻ không bị vùng cuộn của danh sách cắt mất. */
+/** position: fixed so the card is not clipped by the scrolling list. */
 export function PlayerTip({ player, isMe, children }: { player: Player; isMe: boolean; children: ReactNode }) {
   const { t, locale } = useLang();
   const [pos, setPos] = useState<{ x: number; y: number; below: boolean } | null>(null);
@@ -11,7 +11,7 @@ export function PlayerTip({ player, isMe, children }: { player: Player; isMe: bo
   const open = useCallback(() => {
     const rect = anchor.current?.getBoundingClientRect();
     if (!rect) return;
-    // Gần mép trên thì lật xuống dưới, nếu không thẻ sẽ che mất phần đầu trang.
+    // Flip below near the top edge, otherwise the card covers the header.
     const below = rect.top < 150;
     setPos({ x: rect.left + rect.width / 2, y: below ? rect.bottom : rect.top, below });
   }, []);
@@ -38,7 +38,7 @@ export function PlayerTip({ player, isMe, children }: { player: Player; isMe: bo
       onMouseLeave={close}
       onFocus={open}
       onBlur={close}
-      // Trên điện thoại không có rê chuột, nên chạm vào là bật/tắt thẻ.
+      // Phones have no hover, so a tap toggles the card.
       onClick={() => (pos ? close() : open())}
     >
       {children}
@@ -47,7 +47,7 @@ export function PlayerTip({ player, isMe, children }: { player: Player; isMe: bo
           <span className="tip-name">{player.name}</span>
           <span className="tip-row">
             <span>{t("tip.winrate")}</span>
-            <b className="num">{winRate === null ? "—" : `${winRate}%`}</b>
+            <b className="num">{winRate === null ? "-" : `${winRate}%`}</b>
           </span>
           <span className="tip-row">
             <span>{t("board.record", { w: player.wins, l: player.losses })}</span>

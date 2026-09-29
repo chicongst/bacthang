@@ -1,200 +1,222 @@
-# Ranking — Thiết kế
+# Ranking: design
 
-Ngày: 2026-09-17 · Trạng thái: đã duyệt phần kiến trúc, các phần còn lại chốt theo mặc định (xem "Quyết định")
+Date: 2026-09-17 · Status: architecture approved, the rest settled on the defaults (see the decision notes)
 
-## Mục tiêu
+The Chrome extension shell described here was built, then removed from the repository on 2026-09-29.
+The web app is the only shell now. Everything else below still holds, and the `Platform` seam the
+extension needed is what keeps the UI testable.
 
-Bảng xếp hạng cho một nhóm chơi — không gắn với môn nào, tên bảng đặt được lúc build. Người chơi đăng nhập
-bằng Discord qua một Chrome extension, tự ghi kết quả trận, xem thứ hạng và trình độ của mình và mọi người.
+## Goal
 
-## Kiến trúc
+A leaderboard for one group of players, tied to no particular sport, with the board name set at build
+time. Players sign in with Discord through a Chrome extension, record their own results, and see where
+they and everyone else stand.
+
+## Architecture
 
 ```
-Trình duyệt ─────────► Caddy ──┬── /api/*  ──► API (Fastify + Drizzle) ──► PostgreSQL
-Chrome extension ─────►        └── còn lại ──► web (nginx, trang tĩnh)
+Browser ──────────────► Caddy ──┬── /api/*  ──► API (Fastify + Drizzle) ──► PostgreSQL
+Chrome extension ─────►         └── the rest ──► web (nginx, static files)
         │                                │
-        └── chrome.identity              └── chuyển hướng trang
-                    └──────► Discord OAuth ◄──── đổi code (client secret giữ ở API)
+        └── chrome.identity              └── page redirect
+                    └──────► Discord OAuth ◄──── code exchange (client secret stays on the API)
 ```
 
-- `server/` — TypeScript, Fastify 5, Drizzle ORM, node-postgres, Vitest.
-- `app/` — toàn bộ giao diện React, không biết mình chạy ở web hay extension.
-- `web/` — vỏ web: đăng nhập bằng chuyển hướng trang, phiên lưu trong `localStorage`, khung co giãn.
-- `extension/` — vỏ extension: `chrome.identity`, `chrome.storage`, popup cố định 380×580.
-- `deploy/` — Docker Compose (caddy, web, api, postgres), Caddyfile.
+- `server/`: TypeScript, Fastify 5, Drizzle ORM, node-postgres, Vitest.
+- `app/`: the whole React UI, unaware of whether it runs in the web app or the extension.
+- `web/`: the web shell. Sign-in by page redirect, session in `localStorage`, a responsive frame.
+- `extension/`: the extension shell. `chrome.identity`, `chrome.storage`, a fixed 380x580 popup.
+- `deploy/`: Docker Compose (caddy, web, api, postgres) and the Caddyfile.
 
-Hai vỏ nối vào giao diện chung qua một interface `Platform` (lấy/xóa token, đăng nhập, workspace đang mở).
-Thêm một nền tảng mới chỉ cần viết thêm một `Platform`.
+Both shells plug into the shared UI through a `Platform` interface (read and clear the token, sign in,
+current workspace). Adding a platform means writing one more `Platform`.
 
-API đặt dưới `/api` ở tầng Caddy nên web và API chung một tên miền — không cần CORS, không phải trỏ
-thêm bản ghi DNS. Extension cấu hình `VITE_API_BASE=https://<tên miền>/api`.
-- Không backup ở giai đoạn này (quyết định của chủ dự án).
+Caddy mounts the API under `/api`, so the web app and the API share a domain: no CORS, no extra DNS
+record. The extension is configured with `VITE_API_BASE=https://<domain>/api`.
 
-Nguyên tắc: extension chỉ hiển thị và gửi yêu cầu. Mọi luật (điểm, giới hạn ngày, trình độ) chạy ở API,
-trong transaction Postgres.
+No backups at this stage (the project owner's decision).
 
-## Workspace
+Principle: the extension only displays and requests. Every rule (points, the daily limit, tiers) runs on
+the API, inside a Postgres transaction.
 
-Mỗi nhóm chơi là một **workspace**. Người tạo là **owner**. Điểm, hạng, bảng xếp hạng, lịch sử trận và
-giới hạn 3 trận/ngày đều tính riêng trong từng workspace — đánh ở CLB A không ăn vào lượt ở CLB B.
+## Workspaces
 
-Một tài khoản Discord vào được nhiều workspace, đổi qua lại bằng nút trên đầu popup.
+Each group is a **workspace**. Whoever creates it is the **owner**. Points, tiers, the leaderboard, match
+history and the 3-per-day limit are all counted per workspace: playing at club A does not use up slots at
+club B.
 
-| Chế độ | Vào bằng cách nào |
+One Discord account can belong to several workspaces and switch between them from the header.
+
+| Mode | How you get in |
 |---|---|
-| Công khai | Search thấy là vào được ngay |
-| Riêng tư | Search vẫn thấy, nhưng bấm là gửi yêu cầu, owner duyệt mới vào được |
+| Public | Finding it in search is enough |
+| Private | It still shows in search, but joining sends a request the owner has to approve |
 
-Owner bật/tắt chế độ này bất cứ lúc nào trong tab Nhóm.
+The owner can flip this at any time from the Group tab.
 
-Quyền của owner trong workspace của mình: duyệt/từ chối yêu cầu, đuổi thành viên, xóa trận, đổi tên,
-đổi công khai/riêng tư. Owner không tự rời và không bị đuổi khỏi workspace của mình.
+An owner's powers inside their own workspace: approve or reject requests, remove members, delete
+matches, rename the workspace, switch it between public and private. An owner can neither leave nor be
+removed from their own workspace.
 
-**Đuổi rồi vào lại**: người bị đuổi muốn quay lại luôn phải xin duyệt, kể cả workspace đang công khai —
-nếu không thì đuổi xong họ vào lại ngay. Người *tự rời* thì không bị vướng điều này.
+**Removed, then back again**: someone who was removed always has to be approved again, even in a public
+workspace. Otherwise removing them accomplishes nothing, since they rejoin instantly. Someone who *left*
+on their own is not affected.
 
-**Điểm không bao giờ được đặt lại.** Dòng thành viên không bị xóa khi rời nhóm, chỉ đổi trạng thái
-(`removed`, kèm `removed_by` để phân biệt tự rời hay bị đuổi). Vào lại là điểm cũ, số thắng/thua và
-số lượt đã dùng trong ngày quay về nguyên vẹn. Bản đầu tiên xóa hẳn dòng thành viên khi rời nhóm, và
-người thua chỉ cần rời rồi vào lại là xóa sạch điểm bị trừ.
+**Points are never reset.** Leaving does not delete the membership row, it only changes a status
+(`removed`, with `removed_by` to tell leaving apart from being removed). Coming back restores the old
+points, the win/loss record and the slots already used today. The first version deleted the membership
+row on leaving, so anyone who lost only had to leave and rejoin to wipe the deduction.
 
-`ADMIN_DISCORD_IDS` giờ là admin máy chủ: có quyền như owner ở mọi workspace, dành cho người vận hành.
+`ADMIN_DISCORD_IDS` is now the server admin list: owner powers in every workspace, meant for whoever
+operates the instance.
 
-Tìm workspace bỏ qua dấu tiếng Việt: gõ "quan" ra "CLB Quận 1". Tên đã bỏ dấu lưu sẵn ở cột
-`name_folded`, không cần extension `unaccent` của Postgres.
+Workspace search ignores Vietnamese diacritics: typing "quan" finds "CLB Quận 1". The folded name is
+stored in a `name_folded` column, so Postgres does not need the `unaccent` extension.
 
-## Luật chơi
+## Scoring rules
 
-| Luật | Giá trị |
+| Rule | Value |
 |---|---|
-| Điểm khởi đầu | 1000 |
-| Thắng | +20 |
-| Thua | −20 |
-| Giới hạn | 3 trận / cặp đấu / ngày |
-| "Một ngày" | 00:00–23:59 giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7) |
-| Sàn điểm | Không có (điểm có thể xuống dưới 0, thực tế gần như không xảy ra) |
+| Starting points | 1000 |
+| Win | +20 |
+| Loss | -20 |
+| Limit | 3 matches per pair per day |
+| What "a day" means | 00:00 to 23:59 Vietnam time (Asia/Ho_Chi_Minh, UTC+7) |
+| Floor | None. Points can go below 0, though in practice they never do |
 
-Giới hạn tính theo **cặp đấu**, không theo người. A và B đánh với nhau tối đa 3 trận mỗi ngày; A đánh
-với C là hạn mức riêng, không liên quan.
+The limit counts **per pair**, not per person. A and B can play each other at most 3 times a day; A
+against C is a separate budget with nothing to do with it.
 
-Bản đầu tính theo người (5 trận/ngày) và có lỗ hổng: A với B đánh hết lượt của nhau thì B không còn ghi
-được trận với C nữa, dù hai người đó chưa đánh với nhau lần nào. Đếm theo cặp thì không còn chuyện đó.
+The first version counted per person (5 a day) and had a hole: once A and B had used up each other's
+slots, B could no longer record a match against C at all, even though those two had not played once.
+Counting per pair removes that.
 
-Thắng và thua bằng nhau (+20 / −20) nên tổng điểm toàn nhóm không đổi: muốn lên hạng phải lấy điểm của
-người khác, đánh nhiều mà thắng thua ngang nhau thì đứng yên.
+Win and loss are equal (+20 and -20), so the group's total points never change: climbing means taking
+points off somebody else, and playing a lot while winning as often as you lose leaves you where you were.
 
-### Trình độ
+### Tiers
 
-Mỗi 100 điểm là một hạng:
+Every 100 points is one tier:
 
-| Trình độ | Điểm |
+| Tier | Points |
 |---|---|
-| Đồng | < 1000 |
-| Bạc | 1000 – 1099 |
-| Vàng | 1100 – 1199 |
-| Bạch Kim | 1200 – 1299 |
-| Kim Cương | 1300 – 1399 |
-| Cao Thủ | ≥ 1400 |
+| Bronze | below 1000 |
+| Silver | 1000 to 1099 |
+| Gold | 1100 to 1199 |
+| Platinum | 1200 to 1299 |
+| Diamond | 1300 to 1399 |
+| Master | 1400 and up |
 
-Hạng thấp nhất và cao nhất để mở. Ở hạng cao nhất, điểm vẫn tăng tiếp và luôn hiển thị kèm tên hạng.
+The lowest and highest tiers are open-ended. At the top tier points keep climbing and are always shown
+next to the tier name.
 
-Huy hiệu là SVG tự vẽ (khiên theo màu hạng), không dùng tài sản của trò chơi khác.
+Badges are hand-drawn SVG (a shield in the tier colour), not assets taken from another game.
 
-## Ghi kết quả
+## Recording a result
 
-- Tự ghi, không cần đối thủ xác nhận (quyết định của chủ dự án).
-- Người ghi phải là một trong hai người chơi. Không tự đấu với chính mình.
-- Đối thủ phải đã đăng nhập ít nhất một lần.
-- Mỗi trận lưu lại số điểm đã cộng/trừ, để xóa trận hoàn lại chính xác kể cả khi luật đổi sau này.
-- Admin (danh sách Discord ID trong biến môi trường `ADMIN_DISCORD_IDS`) xóa được trận. Xóa là xóa mềm,
-  điểm được hoàn lại, trận không còn tính vào giới hạn ngày.
-- Tab "Gần đây" hiện mọi trận vừa ghi, để trận ghi bậy dễ bị phát hiện.
+- Self-reported, with no confirmation from the opponent (the project owner's decision).
+- Whoever records it has to be one of the two players. No playing yourself.
+- The opponent must have signed in at least once.
+- Every match stores the points it added and subtracted, so deleting it reverses exactly the right
+  amount even if the rules change later.
+- Admins (the Discord IDs in `ADMIN_DISCORD_IDS`) can delete a match. Deletion is soft, the points come
+  back, and the match stops counting toward the daily limit.
+- The Recent tab shows every match as it is recorded, so a bogus one is easy to spot.
 
-Chống ghi đồng thời: transaction khóa hai dòng user (`SELECT … FOR UPDATE`, theo thứ tự id để tránh
-deadlock), đếm trận trong ngày, rồi mới ghi. Hai request song song không vượt được giới hạn.
+Guarding against concurrent writes: the transaction locks both membership rows (`SELECT ... FOR UPDATE`,
+in id order to avoid a deadlock), counts today's matches, and only then writes. Two parallel requests
+cannot get past the limit.
 
-## Đăng nhập
+## Sign-in
 
-1. Popup gửi message cho service worker (popup tự đóng khi cửa sổ Discord chiếm focus, nên không
-   chạy OAuth trong popup được).
-2. Service worker gọi `launchWebAuthFlow` tới Discord authorize, scope `identify`, có `state`.
-3. Nhận `code`, gửi `POST /auth/discord { code, redirectUri }`.
-4. API đổi code bằng client secret, gọi `/users/@me`, upsert user, tạo phiên.
-5. Phiên: token ngẫu nhiên 32 byte, DB chỉ lưu SHA-256 của token, hết hạn sau 30 ngày.
-   Extension lưu token trong `chrome.storage.local`, gửi `Authorization: Bearer`.
+1. The popup sends a message to the service worker (the popup closes as soon as the Discord window takes
+   focus, so OAuth cannot run inside it).
+2. The service worker calls `launchWebAuthFlow` against the Discord authorize endpoint, scope `identify`,
+   with a `state`.
+3. It receives a `code` and sends `POST /auth/discord { code, redirectUri }`.
+4. The API exchanges the code using the client secret, calls `/users/@me`, upserts the user and creates
+   a session.
+5. Sessions: a random 32-byte token, of which the database stores only the SHA-256, expiring after 30
+   days. The extension keeps the token in `chrome.storage.local` and sends `Authorization: Bearer`.
 
-## Cập nhật trực tiếp
+## Realtime updates
 
-Mỗi workspace có một kênh sự kiện SSE: `GET /workspaces/:id/events`. Sau mỗi thay đổi (ghi trận, xóa
-trận, tham gia, duyệt, đuổi, đổi cài đặt), API phát một sự kiện `{ scope: "board" | "members" }` cho
-mọi người đang mở workspace đó. Máy khách **không nhận dữ liệu trong sự kiện** mà chỉ gọi lại
-`/board` — vì thứ hạng và phần "của tôi" khác nhau theo từng người, gửi sẵn sẽ sai.
+Each workspace has one SSE channel: `GET /workspaces/:id/events`. After every change (recording or
+deleting a match, joining, approving, removing, changing settings) the API emits
+`{ scope: "board" | "members" }` to everyone with that workspace open. Clients **take no data from the
+event**, they call `/board` again, because rank and the "me" section differ per person and shipping them
+inside the event would be wrong for somebody.
 
-Vài lựa chọn kỹ thuật:
+A few technical choices:
 
-- **SSE chứ không WebSocket**: luồng dữ liệu chỉ đi một chiều từ máy chủ, WebSocket là thừa.
-- **fetch + ReadableStream chứ không EventSource**: EventSource không gắn được header `Authorization`,
-  dùng nó sẽ phải nhét token vào URL, nơi token dễ lọt vào log của máy chủ.
-- Xác thực xong mới mở dòng dữ liệu, nên lỗi quyền vẫn trả về 401/403 bình thường.
-- Nhịp tim 25 giây giữ kết nối sống qua proxy; Caddy đặt `flush_interval -1` để không gom dữ liệu.
-- Máy khách tự kết nối lại, giãn dần 1s → 15s.
+- **SSE, not WebSocket**: data only flows one way, from the server. A WebSocket would be surplus.
+- **fetch + ReadableStream, not EventSource**: EventSource cannot set an `Authorization` header, so using
+  it would mean putting the token in the URL, where tokens end up in server logs.
+- Authentication happens before the stream opens, so a permission failure is still a normal 401 or 403.
+- A 25-second heartbeat keeps the connection alive through proxies; Caddy sets `flush_interval -1` so it
+  does not buffer.
+- The client reconnects on its own, backing off from 1s to 15s.
 
-Kênh nằm trong bộ nhớ của tiến trình API nên **chỉ đúng khi chạy một bản API duy nhất**. Muốn chạy
-nhiều bản thì thay bằng Postgres `LISTEN/NOTIFY` hoặc Redis pub/sub — sửa đúng một file `events.ts`.
+The channel lives in the API process's memory, so it is **only correct while a single API instance runs**.
+Running several means replacing it with Postgres `LISTEN/NOTIFY` or Redis pub/sub, which touches exactly
+one file, `events.ts`.
 
 ## API
 
-| Method | Path | Ai dùng |
+| Method | Path | Who |
 |---|---|---|
-| POST | `/auth/discord` · `/auth/logout` | mọi người |
-| GET | `/me` | tài khoản + danh sách workspace của tôi |
-| GET | `/workspaces/search?q=` | tìm workspace (bỏ dấu) |
-| POST | `/workspaces` | tạo, người tạo thành owner |
-| POST | `/workspaces/:id/join` | trả về `active` hoặc `pending` |
-| POST | `/workspaces/:id/leave` | thành viên (owner không rời được) |
-| GET | `/workspaces/:id/board` | bảng + thông tin của tôi + luật điểm + lượt còn lại với từng người, gộp một lần gọi |
-| GET · POST | `/workspaces/:id/matches` | thành viên |
+| POST | `/auth/discord` · `/auth/logout` | anyone |
+| GET | `/me` | my account plus my workspaces |
+| GET | `/workspaces/search?q=` | search workspaces (diacritics folded) |
+| POST | `/workspaces` | create one; the creator becomes owner |
+| POST | `/workspaces/:id/join` | returns `active` or `pending` |
+| POST | `/workspaces/:id/leave` | members (an owner cannot leave) |
+| GET | `/workspaces/:id/board` | the board, my own row, the scoring rules and the slots left against each player, in one call |
+| GET · POST | `/workspaces/:id/matches` | members |
 | DELETE | `/workspaces/:id/matches/:matchId` | owner |
-| GET | `/workspaces/:id/members` | owner (gồm cả người chờ duyệt) |
+| GET | `/workspaces/:id/members` | owner (including pending requests) |
 | POST | `/workspaces/:id/members/:userId/approve` | owner |
-| DELETE | `/workspaces/:id/members/:userId` | owner (từ chối hoặc đuổi) |
-| GET | `/workspaces/:id/events` | thành viên — kênh sự kiện SSE |
-| PATCH | `/workspaces/:id` | owner (đổi tên, công khai/riêng tư) |
+| DELETE | `/workspaces/:id/members/:userId` | owner (reject or remove) |
+| GET | `/workspaces/:id/events` | members; the SSE channel |
+| PATCH | `/workspaces/:id` | owner (rename, public/private) |
 
-Lỗi trả về `{ error: { code, message } }`, message tiếng Việt để hiện thẳng lên UI. Mã lỗi:
-`UNAUTHORIZED`, `FORBIDDEN`, `VALIDATION`, `NOT_FOUND`, `SELF_MATCH`, `OPPONENT_NOT_FOUND`,
-`DAILY_LIMIT_REACHED`, `OPPONENT_DAILY_LIMIT_REACHED`, `DISCORD_AUTH_FAILED`, `WORKSPACE_NOT_FOUND`,
-`NOT_MEMBER`, `PENDING_APPROVAL`, `OWNER_CANNOT_LEAVE`.
+Errors return `{ error: { code, message } }`. The message is English and the client translates it by
+code. The codes: `UNAUTHORIZED`, `FORBIDDEN`, `VALIDATION`, `NOT_FOUND`, `SELF_MATCH`,
+`OPPONENT_NOT_FOUND`, `DAILY_LIMIT_REACHED`, `DISCORD_AUTH_FAILED`, `WORKSPACE_NOT_FOUND`, `NOT_MEMBER`,
+`PENDING_APPROVAL`, `OWNER_CANNOT_LEAVE`, `TOO_MANY_STREAMS`, `RATE_LIMITED`, `INTERNAL`.
 
-Xếp hạng: điểm giảm dần, hòa điểm thì ai đạt số điểm đó trước xếp trên.
+Ordering: points descending, and on a tie whoever reached that total first ranks higher.
 
 ## Extension
 
-Popup 380×580. Chưa ở workspace nào thì vào thẳng màn hình tìm/tạo workspace. Sau đó là bốn tab,
-với nút đổi workspace trên đầu:
+A 380x580 popup. With no workspace yet it opens straight on the find-or-create screen. After that come
+the tabs, with the workspace switcher in the header:
 
-- **Bảng** — thẻ "của tôi" (hạng #, trình độ, điểm, số trận hôm nay), top 3 nổi bật, rồi danh sách.
-  Rê chuột vào ảnh đại diện hiện thẻ thông tin: tỉ lệ thắng, thành tích, trận gần nhất, lượt còn lại với mình.
-- **Ghi trận** — chọn đối thủ (có tìm kiếm), hai nút thắng/thua. Số điểm trên nút lấy từ API, không ghi cứng ở UI.
-- **Gần đây** — trận vừa ghi, owner có nút xóa.
-- **Nhóm** — owner: duyệt yêu cầu (có chấm đếm trên tab), đuổi thành viên, đổi tên, đổi công khai/riêng tư.
-  Thành viên thường: xem danh sách và rời workspace.
+- **Board**: the "me" card (rank, tier, points, matches today), the top 3 highlighted, then the list.
+  Hovering an avatar opens a card with win rate, record, last match and slots left against me.
+- **Record**: pick an opponent (searchable), then the win and loss buttons. The points on the buttons come
+  from the API, never hardcoded in the UI.
+- **Recent**: the latest matches, with a delete button for the owner.
+- **Group**: for the owner, approve requests (with a count badge on the tab), remove members, rename,
+  switch public/private. For a regular member, see the roster and leave.
 
-## Ngôn ngữ
+## Language
 
-Tiếng Việt và tiếng Anh, chọn bằng nút cờ (SVG tự vẽ, vì emoji cờ không hiện trên Windows). Thứ tự ưu
-tiên: `?lang=` trên URL → lựa chọn đã lưu → ngôn ngữ trình duyệt. Tên trình độ dịch theo `tier.id` chứ
-không lấy chữ máy chủ gửi xuống; lỗi từ API dịch theo mã lỗi, mã nào chưa có bản dịch thì hiện nguyên
-văn của máy chủ.
+Vietnamese and English, chosen with a flag button (hand-drawn SVG, because flag emoji do not render on
+Windows). Precedence: `?lang=` in the URL, then the saved choice, then the browser language. Tier names
+are translated from `tier.id` rather than taken from the server's text; API errors are translated by
+code, and a code with no translation shows the server's own message.
 
-## Kiểm thử
+## Testing
 
-- Unit: tính trình độ, ranh giới ngày giờ VN, bỏ dấu tiếng Việt.
-- Tích hợp (Postgres thật trong Docker): ghi trận, giới hạn 3 trận cho cả hai phía, ranh giới nửa đêm,
-  5 request song song, xóa trận hoàn điểm, luồng đăng nhập với Discord giả lập.
-- Workspace: tạo/tìm/tham gia công khai và riêng tư, duyệt, đuổi, đuổi rồi vào lại phải xin duyệt,
-  rời rồi vào lại thì không, phân quyền owner, và điểm/lượt/lịch sử tách biệt giữa các workspace.
-- Giới hạn theo cặp: hết lượt với người này vẫn ghi được với người khác, đổi vai người ghi vẫn tính
-  chung một cặp, và 8 request song song cùng một cặp chỉ lọt đúng 3 trận.
-- Sự kiện: chỉ gửi đúng workspace, một người nghe lỗi không chặn người khác, và một bài kiểm tra
-  mở kênh HTTP thật rồi ghi trận để xác nhận sự kiện tới nơi.
+- Unit: tier calculation, the Vietnam day boundary, diacritic folding.
+- Integration (a real Postgres in Docker): recording a match, the limit of 3 seen from both sides, the
+  midnight boundary, 5 parallel requests, deletion restoring points, the sign-in flow against a fake
+  Discord.
+- Workspaces: create, search, join public and private, approve, remove, removal requiring approval on
+  return while leaving does not, owner permissions, and points, slots and history staying separate
+  between workspaces.
+- The per-pair limit: running out against one person still allows recording against another, swapping who
+  reports still counts as the same pair, and 8 parallel requests for one pair let exactly 3 through.
+- Events: delivered only to the right workspace, one failing listener not blocking the others, and a test
+  that opens a real HTTP stream then records a match to confirm the event arrives.

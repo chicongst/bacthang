@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError } from "../api.js";
-import { subscribeWorkspace } from "../events.js";
-import { useLang } from "../i18n.js";
-import type { Platform } from "../platform.js";
-import type { Account, Board, RecentMatch } from "../types.js";
+import { ApiError } from "@app/api.js";
+import { subscribeWorkspace } from "@app/events.js";
+import { useLang } from "@app/i18n.js";
+import type { Platform } from "@app/platform.js";
+import type { Account, Board, RecentMatch } from "@app/types.js";
 
 export interface WorkspaceState {
   account: Account | null;
@@ -37,8 +37,8 @@ export function useWorkspace(
   const [membersVersion, setMembersVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Hai ref giữ cho describeError và kênh sự kiện ổn định qua mỗi lần bảng đổi;
-  // nếu chúng phụ thuộc state thì kênh SSE sẽ bị đóng mở liên tục.
+  // These refs keep describeError and the event stream stable across board updates;
+  // depending on state directly would tear the SSE connection down on every change.
   const boardRef = useRef<Board | null>(null);
   const tabRef = useRef(activeTab);
   boardRef.current = board;
@@ -65,9 +65,9 @@ export function useWorkspace(
       try {
         const loaded = await api.me(activeToken);
         setAccount(loaded);
-        const joined = loaded.workspaces.filter((w) => w.status === "active");
+        const joined = loaded.workspaces.filter((row) => row.status === "active");
         const saved = await platform.getActiveWorkspace();
-        const next = joined.find((w) => w.id === saved)?.id ?? joined[0]?.id ?? null;
+        const next = joined.find((row) => row.id === saved)?.id ?? joined[0]?.id ?? null;
         setWorkspaceId(next);
         if (next !== saved) await platform.setActiveWorkspace(next);
         setError(null);
@@ -92,7 +92,7 @@ export function useWorkspace(
     [api, describeError],
   );
 
-  /** Giữ danh sách cũ trong lúc tải lại, nếu không màn hình chớp mỗi lần có sự kiện. */
+  /** Keeps the old list while reloading, otherwise the screen flickers on every event. */
   const loadRecent = useCallback(
     async (activeToken: string, id: number) => {
       try {
@@ -132,7 +132,7 @@ export function useWorkspace(
       onEvent: (scope) => {
         loadBoard(token, workspaceId);
         if (tabRef.current === "recent") loadRecent(token, workspaceId);
-        if (scope === "members") setMembersVersion((v) => v + 1);
+        if (scope === "members") setMembersVersion((version) => version + 1);
       },
     });
   }, [token, workspaceId, api, isMock, loadBoard, loadRecent]);
@@ -140,8 +140,8 @@ export function useWorkspace(
   const choose = useCallback(
     async (id: number | null) => {
       const same = id !== null && id === workspaceId;
-      // Chọn lại chính workspace đang mở thì giữ nguyên dữ liệu: workspaceId không đổi nên
-      // effect nạp bảng không chạy, xóa ở đây là kẹt màn hình "đang tải" vĩnh viễn.
+      // Re-picking the workspace already open keeps the data: workspaceId does not change,
+      // so the loading effect never runs and clearing here would hang on the loading screen.
       if (!same) {
         setBoard(null);
         setRecent(null);
@@ -170,7 +170,7 @@ export function useWorkspace(
       [token, workspaceId, loadBoard],
     ),
     applyBoard: setBoard,
-    dropMatch: useCallback((matchId: number) => setRecent((r) => r?.filter((m) => m.id !== matchId) ?? null), []),
+    dropMatch: useCallback((matchId: number) => setRecent((current) => current?.filter((match) => match.id !== matchId) ?? null), []),
     choose,
   };
 }

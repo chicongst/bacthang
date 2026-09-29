@@ -1,199 +1,150 @@
 # Ranking
 
-Bảng xếp hạng cho các nhóm chơi — bida, cầu lông, cờ, game gì cũng dùng được. Chạy dưới dạng Chrome
-extension, đăng nhập bằng Discord.
+A scoring and rank-climbing board for a group that competes at something: billiards, badminton, chess,
+board games, anything. It runs as a web app and people sign in with Discord.
 
-Mỗi nhóm là một **workspace** riêng, có bảng xếp hạng riêng. Đăng nhập xong thì tìm workspace để vào
-hoặc tự tạo một cái mới; người tạo là **chủ workspace**. Một tài khoản vào được nhiều workspace và đổi
-qua lại ngay trong popup.
+Each group is its own **workspace** with its own board. After signing in you search for a workspace to
+join or create one, and whoever creates it owns it. One account can belong to several workspaces and
+switch between them inside the app.
 
-Luật: bắt đầu **1000** điểm · thắng **+20** · thua **−20** · tối đa **3 trận cho mỗi cặp đấu mỗi ngày** (theo giờ Việt Nam).
-Cứ **100 điểm là lên một hạng**: Đồng (<1000) · Bạc (1000) · Vàng (1100) · Bạch Kim (1200) · Kim Cương (1300) · Cao Thủ (1400+).
-Hạng cao nhất để mở, điểm cứ chạy tiếp và luôn hiện kèm tên hạng.
+Scoring: everyone starts at **1000** points, a win is **+20**, a loss is **-20**, and a pair of players
+can record at most **3 matches against each other per day** (Vietnam time).
 
-| Chế độ workspace | Vào bằng cách nào |
+Every **100 points** moves you up a tier: Bronze (under 1000), Silver, Gold (1100), Platinum (1200),
+Diamond (1300), Master (1400 and up). The top tier is open-ended and always shows the score next to it.
+
+The limit is counted **per pair, not per person**. A and B can play each other three times a day, and
+A against C has its own budget. Counting per person would let two heavy rivals use up each other's day
+and block everyone else.
+
+Points are tied to the pair (workspace, player) and **are never reset**. Leave a workspace and come back
+and the old score is still there, negative or not.
+
+The board updates **live**: when someone records a match, the ranking changes on everyone's screen
+without a reload. A small dot next to the workspace name turns green while the stream is connected.
+
+The interface ships in **English and Vietnamese**, switched with a flag button. Add `?lang=en` or
+`?lang=vi` to a link to open it in a chosen language.
+
+| Workspace mode | How people get in |
 |---|---|
-| Công khai | Search thấy là vào được ngay |
-| Riêng tư | Search vẫn thấy, bấm là gửi yêu cầu, chủ workspace duyệt mới vào |
+| Public | Anyone who finds it in search joins straight away |
+| Private | Search still finds it, but joining sends a request the owner approves |
 
-Giao diện có **tiếng Việt và tiếng Anh**, đổi bằng nút cờ ở góc trên. Gửi link kèm `?lang=en` hoặc
-`?lang=vi` để mở thẳng theo ngôn ngữ mong muốn.
+The owner approves or declines requests, removes members, deletes a wrongly recorded match (both
+players get their points back), renames the workspace and flips it between public and private. Someone
+the owner removed has to ask again to return, even in a public workspace.
 
-Giới hạn tính theo **cặp đấu**, không theo người: A đánh với B tối đa 3 trận mỗi ngày, còn A đánh với C
-là hạn mức riêng. Tính theo người thì hai người đánh nhau nhiều sẽ chặn mất cơ hội đánh với người khác.
+## Deploying
 
-Điểm gắn với từng cặp (workspace, người chơi) và **không bao giờ được đặt lại** — rời nhóm rồi vào lại
-vẫn giữ nguyên điểm cũ, kể cả điểm âm.
-
-Bảng cập nhật **trực tiếp**: ai đó ghi trận thì thứ hạng trên máy mọi người tự đổi theo, không cần tải
-lại trang. Chấm nhỏ cạnh tên workspace sáng xanh khi đang kết nối.
-
-Chủ workspace: duyệt hoặc từ chối yêu cầu, đuổi thành viên, xóa trận ghi sai, đổi tên, đổi chế độ
-công khai/riêng tư. Người bị đuổi muốn vào lại phải xin duyệt, kể cả workspace đang công khai.
-
-Tên hiện trên extension đặt trong `extension/.env` qua `VITE_BOARD_NAME`, không gắn với môn nào.
-Chi tiết thiết kế: [`docs/plans/2026-09-17-ranking-design.md`](docs/plans/2026-09-17-ranking-design.md).
-
-```
-server/     API Node.js (Fastify + Drizzle + PostgreSQL)
-app/        Giao diện dùng chung, web và extension xài chung một bộ
-web/        Bản web (React) — dùng ngay, không phải chờ ai duyệt
-extension/  Chrome extension (Manifest V3) — cùng giao diện, khác cách đăng nhập
-deploy/     Docker Compose cho VPS (Caddy tự lo HTTPS)
-```
-
-Bản web và extension chỉ khác nhau hai chỗ: đăng nhập Discord (web chuyển hướng trang, extension dùng
-`chrome.identity`) và nơi lưu phiên. Toàn bộ màn hình nằm trong `app/`, sửa một lần là cả hai cùng đổi.
-
-## Bản đang chạy
-
-<https://103.101.163.42.sslip.io> — VPS Ubuntu 24.04, mã nguồn ở `/opt/ranking`, cấu hình ở
-`/opt/ranking/deploy/.env`. `sslip.io` là tên miền tự trỏ về IP, dùng tạm để có HTTPS thật khi chưa có
-tên miền riêng; có tên miền rồi thì đổi `API_DOMAIN` trong `.env`, trỏ bản ghi A về IP, rồi
-`docker compose up -d`.
-
-Cập nhật sau khi sửa code: chép lên rồi dựng lại.
+One command, to any server you can SSH into:
 
 ```bash
-rsync -az --delete --exclude node_modules --exclude dist --exclude .env --exclude .keys \
-  ranking/ root@103.101.163.42:/opt/ranking/
-ssh root@103.101.163.42 'cd /opt/ranking/deploy && docker compose up -d --build'
+./deploy.sh root@198.51.100.10                  # name the host
+echo 'root@198.51.100.10' > .deploy-host        # or save it once, git ignores this file
+./deploy.sh
 ```
 
-## Đưa extension lên Chrome Web Store
+It copies the source to `/opt/ranking`, installs Docker if the server has none, dumps the database to
+`/var/backups/ranking` before touching anything, rebuilds the containers and waits for `/api/health` to
+answer. The first run copies `deploy/.env.example` into place and stops so you can fill it in.
 
-Mọi thứ đã chuẩn bị sẵn trong [`extension/store/`](extension/store): nội dung đăng, ảnh chụp 1280×800,
-ảnh quảng bá, giải trình quyền. Các bước nộp nằm ở [`extension/store/CHECKLIST.md`](extension/store/CHECKLIST.md).
-Gói tải lên: `release/bang-xep-hang-v1.0.0.zip`.
+**No domain yet?** Point `API_DOMAIN` at `<your-ip>.sslip.io`. `sslip.io` resolves any hostname
+containing an IP back to that IP, so Caddy can obtain a real Let's Encrypt certificate for a bare
+server. When you do buy a domain, point an A record at the server, change `API_DOMAIN` and redeploy.
 
-Chính sách riêng tư (bắt buộc với store) đang chạy tại <https://103.101.163.42.sslip.io/privacy.html>,
-mã nguồn ở `web/public/privacy.html`.
-
-## ID của extension
-
-Extension có khóa cố định trong manifest, nên **máy nào cài cũng ra cùng ID**:
+## Layout
 
 ```
-mcmikoacjkhdeaomjhkmbgliccahmbba
+server/     API: Node.js, Fastify, Drizzle, PostgreSQL
+app/        The UI, framed by the shell but unaware of it
+web/        The shell: sign-in by page redirect, session in localStorage, responsive frame
+deploy/     Docker Compose for the VPS, with Caddy handling HTTPS
+deploy.sh   One-command deploy to a server
 ```
 
-Redirect URI dùng cho Discord:
+Everything the host provides reaches the UI through one `Platform` interface, which is how the UI
+stays testable against a fake platform and how it once ran unchanged inside a Chrome extension.
 
-```
-https://mcmikoacjkhdeaomjhkmbgliccahmbba.chromiumapp.org/discord
-```
+Conventions are in [`CLAUDE.md`](CLAUDE.md), and the front-end ones in
+[`FrontendAgents.md`](FrontendAgents.md). The quality scorecard across 20 dimensions is in
+[`docs/AUDIT.md`](docs/AUDIT.md), and the design notes are in [`docs/plans/`](docs/plans).
 
-Khóa bí mật tương ứng nằm ở `extension/.keys/private.pem`. **Giữ riêng, không gửi cho ai.** Chỉ cần tới nó
-nếu sau này đưa extension lên Chrome Web Store. Mất khóa này cũng không làm hỏng bản đang dùng.
+The privacy policy is served at `/privacy.html`, with its source in `web/public/privacy.html`.
 
-## Cài đặt lần đầu
+## Setting up your own instance
 
-### 1. Tạo ứng dụng Discord
+### 1. Create a Discord application
 
-1. Vào <https://discord.com/developers/applications> → **New Application**, đặt tên (ví dụ "Bida Ranking").
-2. Tab **OAuth2**:
-   - Chép **Client ID**.
-   - Bấm **Reset Secret**, chép **Client Secret**. Chỉ đưa vào `.env` trên VPS, không đưa vào extension.
-   - Mục **Redirects** → **Add Redirect** → thêm **cả hai** rồi **Save Changes**:
-     - cho bản web: `https://<tên miền của bạn>/` — nhớ dấu `/` ở cuối
-     - cho extension (nếu dùng): redirect URI ở mục trên
+1. Go to <https://discord.com/developers/applications> and create one.
+2. On the **OAuth2** tab: copy the **Client ID**, reset and copy the **Client Secret** (this one only
+   ever goes into `.env` on the server), then add your redirect URIs under **Redirects**:
+   `https://<your domain>/`, with the trailing slash, which Discord matches exactly.
 
-### 2. Dựng server trên VPS
+### 2. Bring up the server
 
-Cần: một VPS có Docker, và một tên miền (hoặc tên miền con) có bản ghi **A** trỏ về IP của VPS. Cổng 80 và 443 phải mở.
+You need a VPS with Docker and a domain (or subdomain) whose A record points at it, with ports 80 and
+443 open.
 
 ```bash
-# chép thư mục ranking/ lên VPS, rồi:
 cd ranking/deploy
 cp .env.example .env
-nano .env          # điền API_DOMAIN, POSTGRES_PASSWORD, DISCORD_*, ADMIN_DISCORD_IDS
+nano .env          # API_DOMAIN, POSTGRES_PASSWORD, DISCORD_*, ADMIN_DISCORD_IDS
 docker compose up -d --build
-curl https://<API_DOMAIN>/health     # → {"ok":true}
+curl https://<API_DOMAIN>/health     # {"ok":true}
 ```
 
-Lần đầu Caddy cần khoảng nửa phút để xin chứng chỉ HTTPS. Bảng trong database được tạo tự động khi API khởi động.
+Caddy needs about half a minute on first boot to obtain a certificate. Database tables are created
+automatically when the API starts.
 
-**`ADMIN_DISCORD_IDS` là admin máy chủ**, không phải chủ workspace — người trong danh sách này có quyền
-như chủ ở mọi workspace, dùng khi cần dọn dẹp. Bình thường để trống cũng được, vì mỗi workspace đã có
-chủ riêng. Lấy ID: Discord → Cài đặt → Nâng cao → bật **Chế độ nhà phát triển**, rồi chuột phải vào tên
-mình → **Sao chép ID người dùng**. Nhiều người thì cách nhau bằng dấu phẩy, đổi xong chạy
-`docker compose up -d` để áp dụng.
+`ADMIN_DISCORD_IDS` is a **server admin** list, not a workspace owner list: anyone in it has owner
+rights in every workspace, which is there for cleanup. Leaving it empty is fine since each workspace
+already has an owner. To find your ID, turn on Developer Mode in Discord, right-click your name and
+copy the user ID. Separate several with commas and run `docker compose up -d` to apply.
 
-### 3. Xong — mở trang web
-
-Vào `https://<API_DOMAIN>` là dùng được ngay. Trang chạy tốt trên cả điện thoại và máy tính, thêm vào
-màn hình chính của điện thoại thì gần như một ứng dụng.
-
-### 4. Extension (tuỳ chọn)
-
-Chỉ làm bước này nếu bạn muốn bản cài vào Chrome. Bản web đã đủ dùng.
-
-```bash
-cd ranking/extension
-cp .env.example .env
-nano .env          # VITE_API_BASE=https://<API_DOMAIN>/api  (chú ý phần /api)
-                   # VITE_DISCORD_CLIENT_ID, VITE_BOARD_NAME
-npm install
-npm run build      # ra thư mục dist/
-```
-
-Rồi cài vào Chrome:
-
-1. Mở `chrome://extensions` → bật **Developer mode** (góc phải trên).
-2. **Load unpacked** → chọn thư mục `extension/dist`.
-3. Ghim icon extension lên thanh công cụ, bấm vào → **Đăng nhập bằng Discord**.
-
-**Gửi cho bạn bè**: nén thư mục `dist/` thành file zip và gửi đi. Người nhận giải nén rồi làm bước 4. Vì ID cố định
-nên đăng nhập chạy được trên mọi máy.
-
-Popup sẽ tự đóng khi cửa sổ Discord mở ra, đó là hành vi bình thường của Chrome. Đăng nhập xong thì bấm lại icon.
-
-## Cập nhật
-
-- **Server và web**: chép code mới lên VPS → `cd deploy && docker compose up -d --build`. Migration tự chạy,
-  trang web build lại luôn trong cùng lệnh đó.
-- **Extension**: `npm run build` → vào `chrome://extensions` bấm nút tải lại ở thẻ extension. Gửi lại zip cho bạn bè.
-
-## Đóng góp
-
-Quy ước dự án nằm ở [`CLAUDE.md`](CLAUDE.md) — đọc trước khi sửa code. Điểm quan trọng nhất:
-**không viết comment kể lại việc code đang làm**, chỉ giải thích mẹo, ràng buộc bên ngoài hoặc lý do nghiệp vụ.
-
-Kết quả chấm chất lượng theo 20 tiêu chí: [`docs/AUDIT.md`](docs/AUDIT.md).
-
-## Phát triển
+## Development
 
 ```bash
 cd server
 npm install
-npm run db:test    # bật Postgres test trong Docker (cổng 54329)
-npm test           # 87 test: luật điểm, giới hạn ngày, ghi song song, đăng nhập,
-                   #          workspace công khai/riêng tư, duyệt, đuổi, phân quyền,
-                   #          kênh sự kiện realtime
+npm run db:test    # Postgres for tests, in Docker, on port 54329
+npm test           # 87 tests: scoring rules, daily limits, concurrent writes,
+                   #            sign-in, workspace modes, approvals, removals,
+                   #            permissions, the realtime event stream
 npm run typecheck
-docker stop bida-ranking-testdb   # xong thì tắt
+docker stop bida-ranking-testdb
 ```
 
-Giao diện có test riêng, không cần database:
+The UI has its own tests and needs no database:
 
 ```bash
 cd web
 npm install
-npm test           # 16 test: i18n, luồng ghi trận, vỏ ứng dụng
+npm test           # 16 tests: i18n, the record-a-match flow, the app shell
 ```
 
-Xem thử giao diện với dữ liệu mẫu, không cần server hay Discord: chạy `npx vite` trong `web/` (hoặc
-`extension/`), rồi mở
+To browse the UI on sample data, with no server and no Discord, run `npm run dev` in `web/` and
+open:
 
-| Màn hình | Địa chỉ |
+| Screen | URL |
 |---|---|
-| Bảng xếp hạng | `http://localhost:5173/?mock` |
-| Ghi trận | `http://localhost:5173/?mock&tab=record` |
-| Gần đây | `http://localhost:5173/?mock&tab=recent` |
-| Nhóm (quản lý) | `http://localhost:5173/?mock&tab=group` |
-| Chọn workspace | `http://localhost:5173/?mock&view=workspaces` |
-| Đăng nhập | `http://localhost:5173/?mock&view=login` |
+| Leaderboard | `http://localhost:5173/?mock` |
+| Record a match | `http://localhost:5173/?mock&tab=record` |
+| Recent matches | `http://localhost:5173/?mock&tab=recent` |
+| Group management | `http://localhost:5173/?mock&tab=group` |
+| Pick a workspace | `http://localhost:5173/?mock&view=workspaces` |
+| Sign in | `http://localhost:5173/?mock&view=login` |
 
-(Với `extension/` thì đường dẫn là `/popup.html?mock…`)
+Ready-made screenshots are in [`docs/screenshots/`](docs/screenshots). Sample data and the `?mock`
+switches never reach a build.
 
-Ảnh chụp sẵn nằm trong [`docs/screenshots/`](docs/screenshots). Dữ liệu mẫu và các tham số `?mock` không vào bản build.
+## Contributing
+
+Read [`CLAUDE.md`](CLAUDE.md) before changing code, and
+[`FrontendAgents.md`](FrontendAgents.md) as well before touching `app/` or `web/`. The
+rule that surprises people most: **do not write comments that retell what the code does**, only ones
+that explain a trick, an outside constraint, a trade-off or a business reason.
+
+## License
+
+MIT, see [`LICENSE`](LICENSE).

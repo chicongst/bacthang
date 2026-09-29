@@ -7,7 +7,7 @@ import type { DiscordClient, DiscordProfile } from "../src/services/discord.js";
 import { AppError } from "../src/errors.js";
 import { openTestDb, resetDb } from "./helpers.js";
 
-const REDIRECT = "https://abcdefghijklmnop.chromiumapp.org/discord";
+const REDIRECT = "https://ranking.test/";
 
 let db: Db;
 let pool: pg.Pool;
@@ -15,15 +15,15 @@ let app: FastifyInstance;
 let clock: Date;
 
 const profiles: Record<string, DiscordProfile> = {
-  "code-a": { id: "111", name: "Anh A", avatarUrl: "https://cdn.discordapp.com/avatars/111/x.png" },
-  "code-b": { id: "222", name: "Bé B", avatarUrl: null },
-  "code-c": { id: "333", name: "Chú C", avatarUrl: null },
+  "code-a": { id: "111", name: "Alice", avatarUrl: "https://cdn.discordapp.com/avatars/111/x.png" },
+  "code-b": { id: "222", name: "Bob", avatarUrl: null },
+  "code-c": { id: "333", name: "Carol", avatarUrl: null },
   "code-admin": { id: "999", name: "Admin", avatarUrl: null },
 };
 const fakeDiscord: DiscordClient = {
   async exchangeCode(code) {
     const p = profiles[code];
-    if (!p) throw new AppError("DISCORD_AUTH_FAILED", 401, "Đăng nhập Discord không thành công. Thử lại nhé.");
+    if (!p) throw new AppError("DISCORD_AUTH_FAILED", 401, "Discord sign-in failed. Please try again.");
     return p;
   },
 };
@@ -47,7 +47,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await resetDb(db);
-  clock = new Date("2026-09-17T13:00:00Z"); // 20:00 giờ VN
+  clock = new Date("2026-09-17T13:00:00Z"); // 20:00 Vietnam time
 });
 
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });
@@ -62,7 +62,7 @@ async function login(code: string) {
   return { ...body, headers: auth(body.token) };
 }
 
-async function makeWs(token: string, name = "CLB Quận 1", isPublic = true) {
+async function makeWs(token: string, name = "Downtown Club", isPublic = true) {
   const res = await app.inject({ method: "POST", url: "/workspaces", headers: auth(token), payload: { name, isPublic } });
   expect(res.statusCode).toBe(201);
   return res.json().workspace as { id: number; name: string; isPublic: boolean };
@@ -75,72 +75,72 @@ const board = (token: string, wsId: number) =>
 const play = (token: string, wsId: number, opponentId: number, result: "win" | "loss") =>
   app.inject({ method: "POST", url: `/workspaces/${wsId}/matches`, headers: auth(token), payload: { opponentId, result } });
 
-describe("đăng nhập", () => {
-  it("người mới chưa có workspace nào", async () => {
+describe("sign-in", () => {
+  it("a new user has no workspaces", async () => {
     const a = await login("code-a");
-    expect(a.user).toMatchObject({ name: "Anh A", isServerAdmin: false, workspaces: [] });
+    expect(a.user).toMatchObject({ name: "Alice", isServerAdmin: false, workspaces: [] });
 
     const me = await app.inject({ method: "GET", url: "/me", headers: a.headers });
-    expect(me.json()).toMatchObject({ name: "Anh A", workspaces: [] });
+    expect(me.json()).toMatchObject({ name: "Alice", workspaces: [] });
   });
 
-  it("đăng nhập lại giữ nguyên workspace đã tham gia", async () => {
+  it("signing in again keeps the workspaces already joined", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const again = await login("code-a");
-    expect(again.user.workspaces).toMatchObject([{ id: ws.id, name: "CLB Quận 1", role: "owner", status: "active", points: 1000 }]);
+    expect(again.user.workspaces).toMatchObject([{ id: ws.id, name: "Downtown Club", role: "owner", status: "active", points: 1000 }]);
   });
 
-  it("token sai thì 401", async () => {
+  it("a bad token returns 401", async () => {
     const res = await app.inject({ method: "GET", url: "/me", headers: auth("nope") });
     expect(res.statusCode).toBe(401);
     expect(res.json().error.code).toBe("UNAUTHORIZED");
   });
 });
 
-describe("tạo và tìm workspace", () => {
-  it("người tạo thành owner, thấy ngay trên bảng", async () => {
+describe("creating and searching workspaces", () => {
+  it("the creator becomes owner and appears on the board", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const res = await board(a.token, ws.id);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
-      workspace: { name: "CLB Quận 1", isPublic: true, memberCount: 1 },
+      workspace: { name: "Downtown Club", isPublic: true, memberCount: 1 },
       me: { rank: 1, points: 1000, role: "owner", matchesToday: 0, dailyLimitPerPair: 3, winPoints: 20, lossPoints: -20 },
       rules: { startPoints: 1000, winPoints: 20, lossPoints: -20, dailyLimitPerPair: 3 },
     });
-    // Thang trình độ đi kèm, từ thấp lên cao, mốc thấp nhất để mở
+    // Tier ladder travels with it, lowest first and open-ended at the bottom
     expect(res.json().rules.tiers).toEqual([
-      { id: "bronze", name: "Đồng", minPoints: null },
-      { id: "silver", name: "Bạc", minPoints: 1000 },
-      { id: "gold", name: "Vàng", minPoints: 1100 },
-      { id: "platinum", name: "Bạch Kim", minPoints: 1200 },
-      { id: "diamond", name: "Kim Cương", minPoints: 1300 },
-      { id: "master", name: "Cao Thủ", minPoints: 1400 },
+      { id: "bronze", name: "Bronze", minPoints: null },
+      { id: "silver", name: "Silver", minPoints: 1000 },
+      { id: "gold", name: "Gold", minPoints: 1100 },
+      { id: "platinum", name: "Platinum", minPoints: 1200 },
+      { id: "diamond", name: "Diamond", minPoints: 1300 },
+      { id: "master", name: "Master", minPoints: 1400 },
     ]);
   });
 
-  it("tên không hợp lệ thì 400", async () => {
+  it("an invalid name returns 400", async () => {
     const a = await login("code-a");
     const res = await app.inject({ method: "POST", url: "/workspaces", headers: a.headers, payload: { name: "A", isPublic: true } });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe("VALIDATION");
   });
 
-  it("search thấy workspace của người khác kèm trạng thái của mình", async () => {
+  it("search finds other workspaces with my own status", async () => {
     const a = await login("code-a");
-    await makeWs(a.token, "CLB Quận 1");
+    await makeWs(a.token, "Downtown Club");
     const b = await login("code-b");
-    const res = await app.inject({ method: "GET", url: "/workspaces/search?q=quan", headers: b.headers });
+    const res = await app.inject({ method: "GET", url: "/workspaces/search?q=downtown", headers: b.headers });
     expect(res.statusCode).toBe(200);
-    expect(res.json().workspaces).toMatchObject([{ name: "CLB Quận 1", isPublic: true, memberCount: 1, myStatus: null }]);
+    expect(res.json().workspaces).toMatchObject([{ name: "Downtown Club", isPublic: true, memberCount: 1, myStatus: null }]);
   });
 });
 
-describe("tham gia", () => {
-  it("public: vào là thấy bảng ngay", async () => {
+describe("joining", () => {
+  it("public: joining shows the board right away", async () => {
     const a = await login("code-a");
-    const ws = await makeWs(a.token, "CLB Mở", true);
+    const ws = await makeWs(a.token, "Open Club", true);
     const b = await login("code-b");
 
     const res = await join(b.token, ws.id);
@@ -149,9 +149,9 @@ describe("tham gia", () => {
     expect((await board(b.token, ws.id)).json().workspace.memberCount).toBe(2);
   });
 
-  it("private: chờ duyệt, chưa xem được bảng, owner duyệt xong thì vào được", async () => {
+  it("private: pending until the owner approves, then the board opens", async () => {
     const a = await login("code-a");
-    const ws = await makeWs(a.token, "CLB Kín", false);
+    const ws = await makeWs(a.token, "Closed Club", false);
     const b = await login("code-b");
 
     expect((await join(b.token, ws.id)).json()).toEqual({ status: "pending" });
@@ -167,7 +167,7 @@ describe("tham gia", () => {
     expect((await board(b.token, ws.id)).statusCode).toBe(200);
   });
 
-  it("chưa vào thì không xem được bảng", async () => {
+  it("a non-member cannot read the board", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -177,8 +177,8 @@ describe("tham gia", () => {
   });
 });
 
-describe("quyền của owner", () => {
-  it("thành viên thường không xem được danh sách, không đổi được cài đặt, không xóa được trận", async () => {
+describe("owner permissions", () => {
+  it("a plain member cannot list members, change settings or delete matches", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -197,7 +197,7 @@ describe("quyền của owner", () => {
     }
   });
 
-  it("owner đuổi thành viên: mất khỏi bảng, người đó không ghi trận được nữa", async () => {
+  it("removing a member drops them from the board and blocks their matches", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -210,27 +210,27 @@ describe("quyền của owner", () => {
     expect((await board(b.token, ws.id)).statusCode).toBe(403);
     const blocked = await play(b.token, ws.id, a.user.id, "win");
     expect(blocked.statusCode).toBe(403);
-    // Vào lại workspace public vẫn phải xin duyệt
+    // Rejoining a public workspace still needs approval
     expect((await join(b.token, ws.id)).json()).toEqual({ status: "pending" });
   });
 
-  it("owner đổi được tên và chế độ public/private", async () => {
+  it("the owner can rename and switch public/private", async () => {
     const a = await login("code-a");
-    const ws = await makeWs(a.token, "CLB Cũ", true);
+    const ws = await makeWs(a.token, "Old Club", true);
     const res = await app.inject({
       method: "PATCH",
       url: `/workspaces/${ws.id}`,
       headers: a.headers,
-      payload: { name: "CLB Mới", isPublic: false },
+      payload: { name: "New Club", isPublic: false },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().workspace).toMatchObject({ name: "CLB Mới", isPublic: false });
+    expect(res.json().workspace).toMatchObject({ name: "New Club", isPublic: false });
 
     const b = await login("code-b");
     expect((await join(b.token, ws.id)).json()).toEqual({ status: "pending" });
   });
 
-  it("admin máy chủ xóa được trận ở workspace không phải của mình", async () => {
+  it("a server admin can delete matches in any workspace", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -245,12 +245,12 @@ describe("quyền của owner", () => {
     expect((await board(a.token, ws.id)).json().me.points).toBe(1000);
   });
 
-  it("rời workspace rồi vào lại workspace public thì không cần duyệt, nhưng điểm không reset", async () => {
+  it("leaving and rejoining a public workspace needs no approval and keeps the points", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
     await join(b.token, ws.id);
-    await play(a.token, ws.id, b.user.id, "win"); // B còn 980
+    await play(a.token, ws.id, b.user.id, "win"); // B drops to 980
 
     const left = await app.inject({ method: "POST", url: `/workspaces/${ws.id}/leave`, headers: b.headers });
     expect(left.statusCode).toBe(204);
@@ -260,7 +260,7 @@ describe("quyền của owner", () => {
     expect((await board(b.token, ws.id)).json().me).toMatchObject({ points: 980, losses: 1 });
   });
 
-  it("owner không rời được workspace của mình", async () => {
+  it("the owner cannot leave their own workspace", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const res = await app.inject({ method: "POST", url: `/workspaces/${ws.id}/leave`, headers: a.headers });
@@ -269,8 +269,8 @@ describe("quyền của owner", () => {
   });
 });
 
-describe("ghi trận", () => {
-  it("trả về bảng mới sau khi ghi", async () => {
+describe("recording matches", () => {
+  it("returns the updated board", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -283,12 +283,12 @@ describe("ghi trận", () => {
       me: { points: 1020, wins: 1, matchesToday: 1, rank: 1 },
     });
     expect(res.json().players.map((p: { name: string; points: number }) => [p.name, p.points])).toEqual([
-      ["Anh A", 1020],
-      ["Bé B", 980],
+      ["Alice", 1020],
+      ["Bob", 980],
     ]);
   });
 
-  it("không ghi được với người ở workspace khác", async () => {
+  it("cannot record against someone from another workspace", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -297,11 +297,11 @@ describe("ghi trận", () => {
     expect(res.json().error.code).toBe("OPPONENT_NOT_FOUND");
   });
 
-  it("giới hạn mỗi cặp tính riêng từng workspace", async () => {
+  it("the per-pair limit is tracked per workspace", async () => {
     const a = await login("code-a");
     const b = await login("code-b");
-    const w1 = await makeWs(a.token, "CLB Một");
-    const w2 = await makeWs(a.token, "CLB Hai");
+    const w1 = await makeWs(a.token, "Club One");
+    const w2 = await makeWs(a.token, "Club Two");
     await join(b.token, w1.id);
     await join(b.token, w2.id);
 
@@ -316,7 +316,7 @@ describe("ghi trận", () => {
     expect((await board(a.token, w1.id)).json().me.points).toBe(1060);
   });
 
-  it("hết lượt với một người thì vẫn ghi được với người khác", async () => {
+  it("running out against one person still allows recording with another", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -327,14 +327,14 @@ describe("ghi trận", () => {
     for (let i = 0; i < 3; i++) await play(a.token, ws.id, b.user.id, "win");
     const blocked = await play(a.token, ws.id, b.user.id, "win");
     expect(blocked.statusCode).toBe(409);
-    expect(blocked.json().error.message).toContain("Đánh với người khác thì vẫn ghi được");
+    expect(blocked.json().error.message).toContain("You can still play anyone else");
 
-    // đây chính là lỗ hổng của luật cũ: B đánh với C phải ghi được bình thường
+    // This is exactly the hole in the old rule: B against C must still work
     expect((await play(b.token, ws.id, c.user.id, "win")).statusCode).toBe(201);
     expect((await play(a.token, ws.id, c.user.id, "win")).statusCode).toBe(201);
   });
 
-  it("bảng kèm thời điểm trận gần nhất của từng người", async () => {
+  it("the board carries each player's last match time", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -348,7 +348,7 @@ describe("ghi trận", () => {
     for (const p of players) expect(new Date(p.lastMatchAt!).toISOString()).toBe(clock.toISOString());
   });
 
-  it("bảng cho biết còn bao nhiêu lượt với từng người", async () => {
+  it("the board reports how many matches are left with each person", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     const b = await login("code-b");
@@ -361,10 +361,10 @@ describe("ghi trận", () => {
     const by = (id: number) => players.find((p) => p.id === id)!.remainingWithMe;
     expect(by(b.user.id)).toBe(2);
     expect(by(c.user.id)).toBe(3);
-    expect(by(a.user.id)).toBe(0); // không tự đấu với chính mình
+    expect(by(a.user.id)).toBe(0); // you never play yourself
   });
 
-  it("dữ liệu sai định dạng thì 400", async () => {
+  it("a malformed payload returns 400", async () => {
     const a = await login("code-a");
     const ws = await makeWs(a.token);
     for (const payload of [{ opponentId: 2, result: "draw" }, { result: "win" }, { opponentId: "2", result: "win" }]) {
@@ -374,11 +374,11 @@ describe("ghi trận", () => {
     }
   });
 
-  it("lịch sử trận tách riêng theo workspace", async () => {
+  it("match history is separate per workspace", async () => {
     const a = await login("code-a");
     const b = await login("code-b");
-    const w1 = await makeWs(a.token, "CLB Một");
-    const w2 = await makeWs(a.token, "CLB Hai");
+    const w1 = await makeWs(a.token, "Club One");
+    const w2 = await makeWs(a.token, "Club Two");
     await join(b.token, w1.id);
     await join(b.token, w2.id);
     await play(a.token, w1.id, b.user.id, "win");
@@ -391,13 +391,13 @@ describe("ghi trận", () => {
 });
 
 describe("health", () => {
-  it("không cần đăng nhập", async () => {
+  it("needs no sign-in", async () => {
     expect((await app.inject({ method: "GET", url: "/health" })).statusCode).toBe(200);
   });
 });
 
-describe("phiên bản máy chủ", () => {
-  it("mọi phản hồi đều kèm header x-app-version", async () => {
+describe("server version", () => {
+  it("every response carries the x-app-version header", async () => {
     const health = await app.inject({ method: "GET", url: "/health" });
     expect(health.headers["x-app-version"]).toBeTruthy();
 
@@ -407,8 +407,8 @@ describe("phiên bản máy chủ", () => {
   });
 });
 
-describe("giới hạn tần suất", () => {
-  it("đăng nhập dội liên tục thì bị chặn bằng 429", async () => {
+describe("rate limiting", () => {
+  it("hammering sign-in is blocked with 429", async () => {
     const limited = await buildApp({
       db,
       discord: fakeDiscord,

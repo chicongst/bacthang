@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TierId } from "../types.js";
+import type { TierId } from "@app/types.js";
 
 const RING: Record<TierId, string> = {
   bronze: "#B87A4E",

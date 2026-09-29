@@ -9,7 +9,7 @@ import { AppError } from "../src/errors.js";
 import { openTestDb, resetDb } from "./helpers.js";
 
 describe("EventBus", () => {
-  it("chỉ gửi cho đúng workspace và dừng khi hủy đăng ký", () => {
+  it("only reaches the right workspace and stops after unsubscribe", () => {
     const bus = new EventBus();
     const a: string[] = [];
     const b: string[] = [];
@@ -27,33 +27,33 @@ describe("EventBus", () => {
     expect(bus.listenerCount(1)).toBe(0);
   });
 
-  it("một người nghe lỗi không chặn người khác", () => {
+  it("a throwing listener does not block the others", () => {
     const bus = new EventBus();
     const ok: string[] = [];
     bus.subscribe(1, () => {
-      throw new Error("hỏng");
+      throw new Error("boom");
     });
     bus.subscribe(1, (e) => ok.push(e.scope));
     bus.emit(1, "board");
     expect(ok).toEqual(["board"]);
-    expect(bus.listenerCount(1)).toBe(1); // người lỗi bị loại
+    expect(bus.listenerCount(1)).toBe(1); // the throwing one is dropped
   });
 });
 
-const REDIRECT = "https://abcdefghijklmnop.chromiumapp.org/discord";
+const REDIRECT = "https://ranking.test/";
 const profiles: Record<string, DiscordProfile> = {
-  "code-a": { id: "111", name: "Anh A", avatarUrl: null },
-  "code-b": { id: "222", name: "Bé B", avatarUrl: null },
+  "code-a": { id: "111", name: "Alice", avatarUrl: null },
+  "code-b": { id: "222", name: "Bob", avatarUrl: null },
 };
 const fakeDiscord: DiscordClient = {
   async exchangeCode(code) {
     const p = profiles[code];
-    if (!p) throw new AppError("DISCORD_AUTH_FAILED", 401, "sai code");
+    if (!p) throw new AppError("DISCORD_AUTH_FAILED", 401, "bad code");
     return p;
   },
 };
 
-describe("kênh sự kiện qua HTTP", () => {
+describe("event stream over HTTP", () => {
   let db: Db;
   let pool: pg.Pool;
   let app: FastifyInstance;
@@ -87,13 +87,13 @@ describe("kênh sự kiện qua HTTP", () => {
     return (await res.json()) as { token: string; user: { id: number } };
   }
 
-  it("người ngoài workspace không mở được kênh", async () => {
+  it("a non-member cannot open the stream", async () => {
     const a = await login("code-a");
     const ws = await (
       await fetch(`${base}/workspaces`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${a.token}` },
-        body: JSON.stringify({ name: "CLB Quận 1", isPublic: false }),
+        body: JSON.stringify({ name: "Downtown Club", isPublic: false }),
       })
     ).json();
     const b = await login("code-b");
@@ -109,21 +109,21 @@ describe("kênh sự kiện qua HTTP", () => {
     await noAuth.text();
   });
 
-  it("ghi trận thì người đang mở kênh nhận được sự kiện", async () => {
+  it("recording a match reaches an open stream", async () => {
     const a = await login("code-a");
     const ws = (
       await (
         await fetch(`${base}/workspaces`, {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${a.token}` },
-          body: JSON.stringify({ name: "CLB Quận 1", isPublic: true }),
+          body: JSON.stringify({ name: "Downtown Club", isPublic: true }),
         })
       ).json()
     ).workspace as { id: number };
     const b = await login("code-b");
     await fetch(`${base}/workspaces/${ws.id}/join`, { method: "POST", headers: { authorization: `Bearer ${b.token}` } });
 
-    // B mở kênh và chờ
+    // B opens the stream and waits
     const ctrl = new AbortController();
     const stream = await fetch(`${base}/workspaces/${ws.id}/events`, {
       headers: { authorization: `Bearer ${b.token}` },
@@ -148,7 +148,7 @@ describe("kênh sự kiện qua HTTP", () => {
       }
     })();
 
-    // đợi kênh vào sổ rồi mới ghi trận
+    // wait for the stream to register before recording
     await new Promise((r) => setTimeout(r, 150));
     const rec = await fetch(`${base}/workspaces/${ws.id}/matches`, {
       method: "POST",
@@ -157,15 +157,15 @@ describe("kênh sự kiện qua HTTP", () => {
     });
     expect(rec.status).toBe(201);
 
-    await Promise.race([collect, new Promise((_, rej) => setTimeout(() => rej(new Error("quá hạn chờ sự kiện")), 5000))]);
+    await Promise.race([collect, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out waiting for the event")), 5000))]);
     expect(events).toContain("board");
 
     ctrl.abort();
     await collect.catch(() => undefined);
   });
 
-  describe("trần số kênh mở", () => {
-    it("mở quá số kênh cho phép thì bị từ chối", async () => {
+  describe("open stream cap", () => {
+    it("opening more streams than allowed is refused", async () => {
       const capped = await buildApp({
         db,
         discord: fakeDiscord,
@@ -187,7 +187,7 @@ describe("kênh sự kiện qua HTTP", () => {
       const ws = await fetch(`${url}/workspaces`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${login.token}` },
-        body: JSON.stringify({ name: "CLB Kênh", isPublic: true }),
+        body: JSON.stringify({ name: "Stream Club", isPublic: true }),
       }).then((r) => r.json() as Promise<{ workspace: { id: number } }>);
 
       const ctrl = new AbortController();

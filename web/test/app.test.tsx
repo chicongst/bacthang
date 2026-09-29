@@ -11,51 +11,51 @@ function renderApp(fake = makePlatform()) {
   return fake;
 }
 
-describe("vỏ ứng dụng", () => {
-  it("chưa đăng nhập thì hiện màn đăng nhập", async () => {
+describe("app shell", () => {
+  it("shows the sign-in screen when signed out", async () => {
     renderApp(makePlatform({ token: null }));
     expect(await screen.findByRole("button", { name: /Đăng nhập bằng Discord/ })).toBeInTheDocument();
   });
 
-  it("đăng nhập rồi thì nạp bảng của workspace đang mở", async () => {
+  it("loads the board of the active workspace once signed in", async () => {
     const fake = renderApp();
-    expect(await screen.findByText("CLB Thử")).toBeInTheDocument();
+    expect(await screen.findByText("Test Club")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Bảng/ })).toHaveAttribute("aria-selected", "true");
-    expect(fake.api.board).toHaveBeenCalledWith("token-thử", 7);
+    expect(fake.api.board).toHaveBeenCalledWith("test-token", 7);
   });
 
-  it("chưa ở workspace nào thì vào thẳng màn tìm hoặc tạo", async () => {
+  it("goes straight to find-or-create when in no workspace", async () => {
     renderApp(makePlatform({ account: makeAccount({ workspaces: [] }) }));
     expect(await screen.findByRole("heading", { name: "Vào một workspace" })).toBeInTheDocument();
   });
 
-  it("chọn lại đúng workspace đang mở vẫn nạp lại bảng, không kẹt ở màn đang tải", async () => {
+  it("re-picking the open workspace reloads the board instead of hanging on loading", async () => {
     const fake = renderApp();
-    await screen.findByText("CLB Thử");
-    const lanDau = fake.api.board.mock.calls.length;
+    await screen.findByText("Test Club");
+    const before = fake.api.board.mock.calls.length;
 
-    await userEvent.click(screen.getByRole("button", { name: /CLB Thử/ }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: /CLB Thử/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Test Club/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /Test Club/ }));
 
-    await waitFor(() => expect(fake.api.board.mock.calls.length).toBeGreaterThan(lanDau));
-    expect(await screen.findByText("CLB Thử")).toBeInTheDocument();
+    await waitFor(() => expect(fake.api.board.mock.calls.length).toBeGreaterThan(before));
+    expect(await screen.findByText("Test Club")).toBeInTheDocument();
     expect(screen.queryByText("Đang tải…")).not.toBeInTheDocument();
   });
 
-  it("đổi tab sang Gần đây thì mới gọi danh sách trận", async () => {
+  it("only fetches recent matches when that tab opens", async () => {
     const fake = renderApp();
-    await screen.findByText("CLB Thử");
+    await screen.findByText("Test Club");
     expect(fake.api.recent).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("tab", { name: /Gần đây/ }));
-    await waitFor(() => expect(fake.api.recent).toHaveBeenCalledWith("token-thử", 7));
+    await waitFor(() => expect(fake.api.recent).toHaveBeenCalledWith("test-token", 7));
   });
 
-  it("tab Luật hiện đúng mốc điểm máy chủ gửi xuống", async () => {
+  it("the rules tab shows the limits the server sent", async () => {
     const board = makeBoard();
     board.rules.dailyLimitPerPair = 4;
     const fake = renderApp(makePlatform({ board }));
-    await screen.findByText("CLB Thử");
+    await screen.findByText("Test Club");
 
     await userEvent.click(screen.getByRole("tab", { name: /Luật/ }));
     expect(await screen.findByText("Mỗi cặp 4 trận một ngày")).toBeInTheDocument();

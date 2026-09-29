@@ -1,17 +1,19 @@
-// Dữ liệu mẫu chỉ dùng với Vite dev server khi mở popup.html?mock — không vào bản build.
+// Sample data, only used by the Vite dev server with ?mock. Never reaches a build.
+import { fold } from "./format.js";
 import type { Account, Board, Member, Player, RecentMatch, Rules, SearchResult, Tier } from "./types.js";
 
+// Sample players keep Vietnamese names on purpose: these drive the store screenshots.
 const tier = (p: number): Tier =>
-  p >= 1400 ? { id: "master", name: "Cao Thủ" }
-  : p >= 1300 ? { id: "diamond", name: "Kim Cương" }
-  : p >= 1200 ? { id: "platinum", name: "Bạch Kim" }
-  : p >= 1100 ? { id: "gold", name: "Vàng" }
-  : p >= 1000 ? { id: "silver", name: "Bạc" }
-  : { id: "bronze", name: "Đồng" };
+  p >= 1400 ? { id: "master", name: "Master" }
+  : p >= 1300 ? { id: "diamond", name: "Diamond" }
+  : p >= 1200 ? { id: "platinum", name: "Platinum" }
+  : p >= 1100 ? { id: "gold", name: "Gold" }
+  : p >= 1000 ? { id: "silver", name: "Silver" }
+  : { id: "bronze", name: "Bronze" };
 
 const hoursAgo = (h: number) => new Date(Date.UTC(2026, 8, 17, 14 - h, 40)).toISOString();
 
-// điểm = 1000 + (thắng − thua) × 20; hai số cuối: giờ trước trận gần nhất, lượt còn lại với tôi
+// points = 1000 + (wins - losses) * 20; last two numbers: hours since last match, matches left with me
 const raw: Array<[string, number, number, number, number, number]> = [
   ["Hoàng Long", 1520, 58, 32, 2, 3],
   ["Minh Khang", 1380, 47, 28, 5, 1],
@@ -45,12 +47,12 @@ const rules: Rules = {
   lossPoints: -20,
   dailyLimitPerPair: 3,
   tiers: [
-    { id: "bronze", name: "Đồng", minPoints: null },
-    { id: "silver", name: "Bạc", minPoints: 1000 },
-    { id: "gold", name: "Vàng", minPoints: 1100 },
-    { id: "platinum", name: "Bạch Kim", minPoints: 1200 },
-    { id: "diamond", name: "Kim Cương", minPoints: 1300 },
-    { id: "master", name: "Cao Thủ", minPoints: 1400 },
+    { id: "bronze", name: "Bronze", minPoints: null },
+    { id: "silver", name: "Silver", minPoints: 1000 },
+    { id: "gold", name: "Gold", minPoints: 1100 },
+    { id: "platinum", name: "Platinum", minPoints: 1200 },
+    { id: "diamond", name: "Diamond", minPoints: 1300 },
+    { id: "master", name: "Master", minPoints: 1400 },
   ],
 };
 
@@ -89,16 +91,16 @@ export const account: Account = {
 };
 
 export const members: Member[] = [
-  ...players.map((p) => ({
-    userId: p.id,
-    name: p.name,
+  ...players.map((player) => ({
+    userId: player.id,
+    name: player.name,
     avatarUrl: null,
-    role: p.role,
+    role: player.role,
     status: "active" as const,
-    points: p.points,
-    wins: p.wins,
-    losses: p.losses,
-    tier: p.tier,
+    points: player.points,
+    wins: player.wins,
+    losses: player.losses,
+    tier: player.tier,
   })),
   { userId: 90, name: "Bảo Ngọc", avatarUrl: null, role: "member", status: "pending", points: 1000, wins: 0, losses: 0, tier: tier(1000) },
   { userId: 91, name: "Khánh Vy", avatarUrl: null, role: "member", status: "pending", points: 1000, wins: 0, losses: 0, tier: tier(1000) },
@@ -113,11 +115,9 @@ const allWorkspaces: SearchResult[] = [
   { id: 6, name: "Cầu lông Tân Bình", isPublic: false, memberCount: 9, myStatus: null, myRole: null },
 ];
 
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase();
-
-export function searchResults(q: string): SearchResult[] {
-  const f = fold(q.trim());
-  return f ? allWorkspaces.filter((w) => fold(w.name).includes(f)) : allWorkspaces;
+export function searchResults(query: string): SearchResult[] {
+  const needle = fold(query.trim());
+  return needle ? allWorkspaces.filter((row) => fold(row.name).includes(needle)) : allWorkspaces;
 }
 
 const at = (h: number, m: number) => new Date(Date.UTC(2026, 8, 17, h - 7, m)).toISOString();

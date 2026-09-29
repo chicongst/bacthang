@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Platform } from "../platform.js";
+import type { Platform } from "@app/platform.js";
 
 export interface Session {
-  /** undefined là chưa đọc xong bộ nhớ, null là chưa đăng nhập. */
+  /** undefined means storage has not been read yet, null means signed out. */
   token: string | null | undefined;
   signOut: () => Promise<void>;
   forget: () => Promise<void>;

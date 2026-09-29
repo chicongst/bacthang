@@ -7,13 +7,13 @@ export function makePlayer(over: Partial<Player> = {}): Player {
   return {
     rank: 1,
     id: 1,
-    name: "Người Chơi",
+    name: "Player",
     avatarUrl: null,
     points: 1000,
     wins: 0,
     losses: 0,
     role: "member",
-    tier: { id: "silver", name: "Bạc" },
+    tier: { id: "silver", name: "Silver" },
     lastMatchAt: null,
     remainingWithMe: 3,
     ...over,
@@ -21,16 +21,16 @@ export function makePlayer(over: Partial<Player> = {}): Player {
 }
 
 export function makeBoard(over: Partial<Board> = {}): Board {
-  const me = makePlayer({ id: 1, name: "Tôi", role: "owner" });
-  const rival = makePlayer({ id: 2, rank: 2, name: "Đối Thủ" });
+  const me = makePlayer({ id: 1, name: "Me", role: "owner" });
+  const rival = makePlayer({ id: 2, rank: 2, name: "Rival" });
   return {
-    workspace: { id: 7, name: "CLB Thử", isPublic: true, memberCount: 2 },
+    workspace: { id: 7, name: "Test Club", isPublic: true, memberCount: 2 },
     rules: {
       startPoints: 1000,
       winPoints: 20,
       lossPoints: -20,
       dailyLimitPerPair: 3,
-      tiers: [{ id: "bronze", name: "Đồng", minPoints: null }],
+      tiers: [{ id: "bronze", name: "Bronze", minPoints: null }],
     },
     me: {
       id: me.id,
@@ -56,11 +56,11 @@ export function makeBoard(over: Partial<Board> = {}): Board {
 export function makeAccount(over: Partial<Account> = {}): Account {
   return {
     id: 1,
-    name: "Tôi",
+    name: "Me",
     avatarUrl: null,
     isServerAdmin: false,
     workspaces: [
-      { id: 7, name: "CLB Thử", isPublic: true, role: "owner", status: "active", points: 1000, tier: { id: "silver", name: "Bạc" } },
+      { id: 7, name: "Test Club", isPublic: true, role: "owner", status: "active", points: 1000, tier: { id: "silver", name: "Silver" } },
     ],
     ...over,
   };
@@ -76,7 +76,7 @@ export function makePlatform(over: { board?: Board; account?: Account; recent?: 
   const board = over.board ?? makeBoard();
   const account = over.account ?? makeAccount();
   let activeWorkspace: number | null = account.workspaces[0]?.id ?? null;
-  let token = over.token === undefined ? "token-thử" : over.token;
+  let token = over.token === undefined ? "test-token" : over.token;
 
   const api = {
     base: "http://test",
@@ -99,7 +99,6 @@ export function makePlatform(over: { board?: Board; account?: Account; recent?: 
 
   const platform: Platform = {
     api: api as unknown as Api,
-    kind: "web",
     boardName: "Bảng Xếp Hạng",
     isMock: true,
     onServerChanged: () => undefined,

@@ -14,10 +14,10 @@ export async function requireMember(db: Db, workspaceId: number, userId: number)
     .from(memberships)
     .where(and(eq(memberships.workspaceId, workspaceId), eq(memberships.userId, userId)));
   if (!m || m.status === "removed") {
-    throw new AppError("NOT_MEMBER", 403, "Bạn không ở trong workspace này.");
+    throw new AppError("NOT_MEMBER", 403, "You are not in this workspace.");
   }
   if (m.status === "pending") {
-    throw new AppError("PENDING_APPROVAL", 403, "Yêu cầu tham gia của bạn đang chờ chủ workspace duyệt.");
+    throw new AppError("PENDING_APPROVAL", 403, "Your request is waiting for the workspace owner to approve it.");
   }
   return m;
 }
@@ -25,12 +25,12 @@ export async function requireMember(db: Db, workspaceId: number, userId: number)
 export async function requireOwner(db: Db, workspaceId: number, userId: number, isServerAdmin: boolean) {
   if (isServerAdmin) {
     const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId));
-    if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Không tìm thấy workspace.");
+    if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Workspace not found.");
     return;
   }
   const m = await requireMember(db, workspaceId, userId);
   if (m.role !== "owner") {
-    throw new AppError("FORBIDDEN", 403, "Chỉ chủ workspace mới làm được việc này.");
+    throw new AppError("FORBIDDEN", 403, "Only the workspace owner can do this.");
   }
 }
 
@@ -57,7 +57,7 @@ export async function joinWorkspace(db: Db, input: { workspaceId: number; userId
 
   return db.transaction(async (tx) => {
     const [ws] = await tx.select().from(workspaces).where(eq(workspaces.id, input.workspaceId)).for("update");
-    if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Không tìm thấy workspace.");
+    if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Workspace not found.");
 
     const [existing] = await tx
       .select()
@@ -68,12 +68,12 @@ export async function joinWorkspace(db: Db, input: { workspaceId: number; userId
     if (existing?.status === "active") return { status: "active" as const };
     if (existing?.status === "pending") return { status: "pending" as const };
 
-    // Bị owner đuổi thì luôn phải xin lại; tự rời thì theo chế độ của workspace.
+    // Someone removed by the owner always has to ask again; leaving on your own follows the workspace mode.
     const wasKicked = existing?.status === "removed" && existing.removedBy !== null;
     const status = wasKicked || !ws.isPublic ? ("pending" as const) : ("active" as const);
 
     if (existing) {
-      // Giữ nguyên điểm cũ. Nếu đặt lại 1000 ở đây, ai thua sẽ rời nhóm rồi vào lại để xóa nợ.
+      // Keep the old points. Resetting to 1000 here lets a losing player leave and rejoin to wipe the debt.
       await tx.update(memberships).set({ status, removedBy: null }).where(eq(memberships.id, existing.id));
     } else {
       await tx.insert(memberships).values({
@@ -123,29 +123,29 @@ export async function approveMember(db: Db, input: { workspaceId: number; userId
       ),
     )
     .returning({ id: memberships.id });
-  if (updated.length === 0) throw new AppError("NOT_FOUND", 404, "Không có yêu cầu nào đang chờ của người này.");
+  if (updated.length === 0) throw new AppError("NOT_FOUND", 404, "No pending request from this person.");
 }
 
-/** Dùng cho cả từ chối yêu cầu lẫn đuổi thành viên. */
+/** Used both to decline a request and to remove a member. */
 export async function removeMember(db: Db, input: { workspaceId: number; userId: number; actorId: number; now?: Date }) {
   const [target] = await db
     .select()
     .from(memberships)
     .where(and(eq(memberships.workspaceId, input.workspaceId), eq(memberships.userId, input.userId)));
   if (!target || target.status === "removed") {
-    throw new AppError("NOT_FOUND", 404, "Người này không ở trong workspace.");
+    throw new AppError("NOT_FOUND", 404, "This person is not in the workspace.");
   }
   if (target.role === "owner") {
-    throw new AppError("OWNER_CANNOT_LEAVE", 400, "Không thể đưa chủ workspace ra khỏi workspace.");
+    throw new AppError("OWNER_CANNOT_LEAVE", 400, "The workspace owner cannot be removed.");
   }
   await db.update(memberships).set({ status: "removed", removedBy: input.actorId }).where(eq(memberships.id, target.id));
 }
 
-/** Dòng thành viên ở lại cùng điểm: xóa đi thì ai thua chỉ cần rời rồi vào lại là sạch nợ. */
+/** The membership row stays with its points: deleting it lets a loser rejoin with a clean slate. */
 export async function leaveWorkspace(db: Db, input: { workspaceId: number; userId: number }) {
   const m = await requireMember(db, input.workspaceId, input.userId);
   if (m.role === "owner") {
-    throw new AppError("OWNER_CANNOT_LEAVE", 400, "Chủ workspace không thể rời workspace của mình.");
+    throw new AppError("OWNER_CANNOT_LEAVE", 400, "The owner cannot leave their own workspace.");
   }
   await db.update(memberships).set({ status: "removed", removedBy: null }).where(eq(memberships.id, m.id));
 }

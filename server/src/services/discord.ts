@@ -21,12 +21,12 @@ interface DiscordUser {
 }
 
 function failed(): AppError {
-  return new AppError("DISCORD_AUTH_FAILED", 401, "Đăng nhập Discord không thành công. Thử lại nhé.");
+  return new AppError("DISCORD_AUTH_FAILED", 401, "Discord sign-in failed. Please try again.");
 }
 
 export function avatarUrlFor(user: Pick<DiscordUser, "id" | "avatar">): string {
   if (user.avatar) return `${CDN}/avatars/${user.id}/${user.avatar}.png?size=128`;
-  // Avatar mặc định của Discord cho hệ tên người dùng mới.
+  // Discord's default avatar formula for the new username system.
   const index = Number((BigInt(user.id) >> 22n) % 6n);
   return `${CDN}/embed/avatars/${index}.png`;
 }

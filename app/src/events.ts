@@ -1,11 +1,11 @@
 export type EventScope = "board" | "members";
 
 /**
- * Nghe sự kiện của một workspace bằng SSE.
+ * Listens to one workspace over SSE.
  *
- * Dùng fetch thay cho EventSource vì EventSource không gắn được header
- * Authorization — cách kia sẽ phải nhét token vào URL, nơi nó dễ lọt vào log.
- * Tự kết nối lại khi đứt, giãn dần để không dội vào máy chủ.
+ * Uses fetch instead of EventSource because EventSource cannot set an Authorization
+ * header, which would force the token into the URL where logs pick it up.
+ * Reconnects on drop with a growing backoff.
  */
 export function subscribeWorkspace(opts: {
   base: string;
@@ -39,7 +39,7 @@ export function subscribeWorkspace(opts: {
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        // Mỗi khung kết thúc bằng một dòng trống; dòng ": ..." là chú thích/nhịp tim.
+        // Frames end with a blank line; a ": ..." line is a comment or heartbeat.
         const frames = buffer.split("\n\n");
         buffer = frames.pop() ?? "";
         for (const frame of frames) {
@@ -51,12 +51,12 @@ export function subscribeWorkspace(opts: {
             const parsed = JSON.parse(data.slice(5).trim()) as { scope?: EventScope };
             if (parsed.scope) onEvent(parsed.scope);
           } catch {
-            /* khung hỏng thì bỏ qua */
+            /* ignore a malformed frame */
           }
         }
       }
     } catch {
-      /* mạng đứt hoặc bị hủy */
+      /* connection dropped or aborted */
     } finally {
       onConnected?.(false);
     }

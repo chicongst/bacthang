@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 const APP = fileURLToPath(new URL("../app/src", import.meta.url));
 const require = createRequire(import.meta.url);
 
-// Giao diện dùng chung nằm ngoài web/ và không có node_modules riêng, nên phải chỉ rõ
-// React nằm ở đâu — nếu để lẫn hai bản React thì hook sẽ hỏng.
+// The shared UI lives outside web/ and has no node_modules of its own, so pin one React copy here:
+// two copies in the same bundle break hooks.
 const reactAlias = ["react", "react/jsx-runtime", "react-dom", "react-dom/client"].map((id) => ({
   find: new RegExp(`^${id.replace("/", "\\/")}$`),
   replacement: require.resolve(id),
@@ -15,9 +15,10 @@ const reactAlias = ["react", "react/jsx-runtime", "react-dom", "react-dom/client
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd());
+  // Kept in step with DEFAULT_BOARD_NAME in app/src/constants.ts; a Vite config cannot import from the app.
   const boardName = env.VITE_BOARD_NAME?.trim() || "Bảng Xếp Hạng";
   if (command === "build" && !env.VITE_DISCORD_CLIENT_ID) {
-    throw new Error("Thiếu VITE_DISCORD_CLIENT_ID trong web/.env (xem .env.example)");
+    throw new Error("VITE_DISCORD_CLIENT_ID is missing from web/.env (see .env.example)");
   }
   return {
     plugins: [
@@ -30,7 +31,7 @@ export default defineConfig(({ command, mode }) => {
     resolve: { alias: [{ find: /^@app\//, replacement: `${APP}/` }, ...reactAlias] },
     server: {
       fs: { allow: [APP, "."] },
-      // Chạy ở máy thì /api được chuyển tiếp sang API cục bộ, giống hệt cách Caddy làm trên server.
+      // Locally, /api is forwarded to the API on this machine, exactly as Caddy does on the server.
       proxy: {
         "/api": {
           target: env.VITE_DEV_API || "http://localhost:3001",

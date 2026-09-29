@@ -1,2 +1,2 @@
-// Font import chỉ để nạp CSS, không có giá trị xuất ra.
+// Font imports only pull in CSS and export nothing.
 declare module "@fontsource/*";

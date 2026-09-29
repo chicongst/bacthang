@@ -16,7 +16,7 @@ import { matchesToday, remainingTodayByOpponent } from "./matches.js";
 export async function getBoard(db: Db, input: { workspaceId: number; userId: number; now: Date }) {
   const { workspaceId, userId, now } = input;
   const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId));
-  if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Không tìm thấy workspace.");
+  if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Workspace not found.");
   const me = await requireMember(db, workspaceId, userId);
 
   const rows = await db

@@ -6,6 +6,8 @@ export interface Tier {
 
 export type Role = "owner" | "member";
 export type MemberStatus = "active" | "pending" | "removed";
+export type MatchResult = "win" | "loss";
+export type Tab = "board" | "record" | "recent" | "group" | "rules";
 
 export interface Account {
   id: number;
@@ -59,7 +61,7 @@ export interface BoardMe {
 export interface TierStep {
   id: TierId;
   name: string;
-  /** null nghĩa là không có mốc dưới — hạng thấp nhất. */
+  /** null means no lower bound: the bottom tier. */
   minPoints: number | null;
 }
 

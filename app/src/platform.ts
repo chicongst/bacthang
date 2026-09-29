@@ -1,18 +1,31 @@
 import type { Api } from "./api.js";
 
-/** Phần khác nhau giữa web và extension. Giao diện bên trong không biết mình chạy ở đâu. */
+export type LoginErrorCode =
+  | "LOGIN_WINDOW_CLOSED"
+  | "LOGIN_NO_RESULT"
+  | "LOGIN_DENIED"
+  | "LOGIN_STATE_MISMATCH"
+  | "LOGIN_NO_CODE"
+  | "LOGIN_SERVER_UNREACHABLE"
+  | "LOGIN_FAILED"
+  | "LOGIN_NOT_CONFIGURED";
+
+export type LoginOutcome =
+  | { ok: true }
+  | { ok: false; code: LoginErrorCode; message?: string };
+
+/** What a shell provides to the UI. The UI never knows where it runs. */
 export interface Platform {
   api: Api;
-  /** Đăng ký nhận báo khi máy chủ có bản mới hơn bản đang mở. */
+  /** Subscribe to be told when the server is newer than this page. */
   onServerChanged(cb: () => void): void;
   boardName: string;
-  kind: "web" | "extension";
   isMock: boolean;
   getToken(): Promise<string | null>;
-  /** Trả về hàm hủy đăng ký. */
+  /** Returns an unsubscribe function. */
   onTokenChange(cb: (token: string | null) => void): () => void;
   clearToken(): Promise<void>;
-  startLogin(): Promise<{ ok: true } | { ok: false; message: string }>;
+  startLogin(): Promise<LoginOutcome>;
   getActiveWorkspace(): Promise<number | null>;
   setActiveWorkspace(id: number | null): Promise<void>;
 }

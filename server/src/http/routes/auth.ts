@@ -24,7 +24,7 @@ export async function authRoutes(app: FastifyInstance, ctx: RouteContext): Promi
     },
     async (req) => {
       if (!ctx.isAllowedRedirect(req.body.redirectUri)) {
-        throw new AppError("VALIDATION", 400, "Địa chỉ chuyển hướng không được phép.");
+        throw new AppError("VALIDATION", 400, "That redirect URI is not allowed.");
       }
       const profile = await ctx.discord.exchangeCode(req.body.code, req.body.redirectUri);
       const at = ctx.now();

@@ -8,7 +8,7 @@ import { AppError } from "../errors.js";
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 type Executor = Db | Tx;
 
-/** Chỉ để hiển thị. Con số dùng để chặn là matchesTodayBetween. */
+/** Display only. The number that actually blocks a match is matchesTodayBetween. */
 export async function matchesToday(db: Executor, workspaceId: number, userId: number, now: Date): Promise<number> {
   const { start, end } = vnDayRange(now);
   const [row] = await db
@@ -26,7 +26,7 @@ export async function matchesToday(db: Executor, workspaceId: number, userId: nu
   return row?.n ?? 0;
 }
 
-/** Tính cả hai chiều thắng thua: A thắng B và B thắng A là cùng một cặp. */
+/** Counts both directions: A beating B and B beating A are the same pair. */
 export async function matchesTodayBetween(
   db: Executor,
   workspaceId: number,
@@ -53,7 +53,7 @@ export async function matchesTodayBetween(
   return row?.n ?? 0;
 }
 
-/** Một truy vấn cho mọi đối thủ: hỏi lẻ từng người thành N+1 trên đường nóng nhất. */
+/** One query for every opponent: asking per person turns into N+1 on the hottest path. */
 export async function remainingTodayByOpponent(
   db: Executor,
   workspaceId: number,
@@ -61,8 +61,8 @@ export async function remainingTodayByOpponent(
   now: Date,
 ): Promise<Map<number, number>> {
   const { start, end } = vnDayRange(now);
-  // Gom theo số thứ tự cột: drizzle sinh tên cột có tiền tố ở GROUP BY nhưng không có ở SELECT,
-  // nên nhắc lại chính biểu thức đó sẽ bị Postgres coi là hai biểu thức khác nhau.
+  // Group by column ordinal: drizzle qualifies column names in GROUP BY but not in SELECT,
+  // so repeating the expression makes Postgres see two different expressions.
   const opponentId = sql<number>`case when ${matches.winnerId} = ${userId} then ${matches.loserId} else ${matches.winnerId} end`;
   const rows = await db
     .select({ opponentId, played: count() })
@@ -85,7 +85,7 @@ export async function remainingTodayByOpponent(
   return remaining;
 }
 
-// Luôn khóa theo thứ tự user id tăng dần, để hai giao dịch chéo nhau không deadlock.
+// Always lock in ascending user id order so two crossing transactions cannot deadlock.
 async function lockMembers(tx: Tx, workspaceId: number, userIds: number[]) {
   return tx
     .select({ userId: memberships.userId, status: memberships.status, name: users.name })
@@ -107,26 +107,26 @@ export interface RecordMatchInput {
 export async function recordMatch(db: Db, input: RecordMatchInput) {
   const { workspaceId, reporterId, opponentId, result, now = new Date() } = input;
   if (reporterId === opponentId) {
-    throw new AppError("SELF_MATCH", 400, "Không thể ghi trận với chính mình.");
+    throw new AppError("SELF_MATCH", 400, "You cannot record a match against yourself.");
   }
 
   return db.transaction(async (tx) => {
     const locked = await lockMembers(tx, workspaceId, [reporterId, opponentId]);
     const reporter = locked.find((m) => m.userId === reporterId);
     if (!reporter || reporter.status !== "active") {
-      throw new AppError("NOT_MEMBER", 403, "Bạn không còn trong workspace này.");
+      throw new AppError("NOT_MEMBER", 403, "You are no longer in this workspace.");
     }
     const opponent = locked.find((m) => m.userId === opponentId);
     if (!opponent || opponent.status !== "active") {
-      throw new AppError("OPPONENT_NOT_FOUND", 404, "Đối thủ không còn trong workspace này.");
+      throw new AppError("OPPONENT_NOT_FOUND", 404, "That opponent is no longer in this workspace.");
     }
 
-    // Đếm sau khi đã giữ khóa, nếu không hai request song song cùng lọt qua.
+    // Count after taking the lock, otherwise two parallel requests both slip through.
     if ((await matchesTodayBetween(tx, workspaceId, reporterId, opponentId, now)) >= DAILY_LIMIT_PER_PAIR) {
       throw new AppError(
         "DAILY_LIMIT_REACHED",
         409,
-        `Bạn và ${opponent.name} đã đánh đủ ${DAILY_LIMIT_PER_PAIR} trận hôm nay. Đánh với người khác thì vẫn ghi được.`,
+        `You and ${opponent.name} have played all ${DAILY_LIMIT_PER_PAIR} matches today. You can still play anyone else.`,
       );
     }
 
@@ -173,7 +173,7 @@ export async function deleteMatch(db: Db, input: { workspaceId: number; matchId:
       .from(matches)
       .where(and(eq(matches.id, matchId), eq(matches.workspaceId, workspaceId), isNull(matches.deletedAt)))
       .for("update");
-    if (!match) throw new AppError("NOT_FOUND", 404, "Không tìm thấy trận này, hoặc trận đã bị xóa.");
+    if (!match) throw new AppError("NOT_FOUND", 404, "Match not found, or it was already deleted.");
 
     await lockMembers(tx, workspaceId, [match.winnerId, match.loserId]);
 

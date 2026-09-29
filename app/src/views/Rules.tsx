@@ -1,9 +1,9 @@
-import type { BoardMe, Rules as RuleSet } from "../types.js";
-import { fmtDelta } from "../format.js";
-import { useLang } from "../i18n.js";
-import { TierBadge } from "../components/TierBadge.js";
+import type { BoardMe, Rules as RuleSet } from "@app/types.js";
+import { fmtDelta } from "@app/format.js";
+import { useLang } from "@app/i18n.js";
+import { TierBadge } from "@app/components/TierBadge.js";
 
-/** Mọi con số lấy từ máy chủ, không viết cứng ở đây. */
+/** Every number comes from the server, none are hardcoded here. */
 export function Rules({ rules, me }: { rules: RuleSet; me: BoardMe }) {
   const { t, tierName } = useLang();
 

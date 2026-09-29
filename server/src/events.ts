@@ -1,4 +1,4 @@
-/** Trong bộ nhớ tiến trình, nên chỉ đúng khi chạy một bản API duy nhất. */
+/** Lives in process memory, so it is only correct while a single API instance runs. */
 export type EventScope = "board" | "members";
 
 export interface WorkspaceEvent {

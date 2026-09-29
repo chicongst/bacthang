@@ -6,8 +6,8 @@ dist/
 .DS_Store
 *.log
 
-# Khóa riêng của extension, mất là mất luôn ID trên Chrome Web Store
-extension/.keys/
+.claude/settings.local.json
+.claude/verify.off
 
-# Gói build để tải lên store, dựng lại được bằng npm run build
-release/
+# Your own deploy target, not anybody else's
+.deploy-host

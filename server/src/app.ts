@@ -49,7 +49,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
 
   const app = Fastify({
     logger: opts.logger ?? true,
-    // Tắt ép kiểu của ajv: "2" không được âm thầm thành số 2.
+    // Turn off ajv coercion: "2" must not silently become the number 2.
     ajv: { customOptions: { coerceTypes: false } },
     trustProxy: opts.trustProxy ?? false,
   });
@@ -58,14 +58,14 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     await app.register(rateLimit, { global: true, max: limits.perWindow, timeWindow: limits.windowMs });
   }
 
-  // Đổi mỗi lần deploy; máy khách so với giá trị thấy lần đầu để biết trang đã cũ.
+  // Changes on every deploy; the client compares it with the first value it saw to spot a stale page.
   const version = opts.version ?? String(Date.now());
   app.addHook("onSend", async (_req, reply) => {
     reply.header("x-app-version", version);
   });
 
   app.setNotFoundHandler((_req, reply) => {
-    reply.code(404).send({ error: { code: "NOT_FOUND", message: "Không tìm thấy đường dẫn này." } });
+    reply.code(404).send({ error: { code: "NOT_FOUND", message: "Route not found." } });
   });
 
   app.setErrorHandler((err: FastifyError, req, reply) => {
@@ -75,19 +75,19 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     if (err.statusCode === 429) {
       return reply
         .code(429)
-        .send({ error: { code: "RATE_LIMITED", message: "Bạn thao tác quá nhanh. Chờ một lát rồi thử lại." } });
+        .send({ error: { code: "RATE_LIMITED", message: "Too many requests. Wait a moment and try again." } });
     }
     if (err.validation || (err.statusCode && err.statusCode >= 400 && err.statusCode < 500)) {
-      return reply.code(400).send({ error: { code: "VALIDATION", message: "Dữ liệu gửi lên không hợp lệ." } });
+      return reply.code(400).send({ error: { code: "VALIDATION", message: "Invalid request payload." } });
     }
     req.log.error(err);
-    return reply.code(500).send({ error: { code: "INTERNAL", message: "Máy chủ gặp lỗi. Thử lại sau nhé." } });
+    return reply.code(500).send({ error: { code: "INTERNAL", message: "Server error. Try again later." } });
   });
 
   async function requireUser(req: FastifyRequest): Promise<Authed> {
     const token = bearerToken(req);
     const user = token ? await userForToken(db, token, now()) : null;
-    if (!user) throw new AppError("UNAUTHORIZED", 401, "Bạn cần đăng nhập lại.");
+    if (!user) throw new AppError("UNAUTHORIZED", 401, "Please sign in again.");
     return { ...user, isServerAdmin: admins.has(user.discordId) };
   }
 

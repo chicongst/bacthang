@@ -1,4 +1,4 @@
-/** Bỏ dấu tiếng Việt và hạ chữ thường, để tìm "quan" ra "Quận". */
+/** Strips Vietnamese accents and lowercases, so searching "quan" finds "Quận". */
 export function fold(s: string): string {
   return s
     .normalize("NFD")

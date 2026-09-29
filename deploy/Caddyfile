@@ -1,15 +1,15 @@
 {$API_DOMAIN} {
 	encode gzip
 
-	# API nằm dưới /api, phần tiền tố được cắt trước khi chuyển tiếp
+	# The API lives under /api, and the prefix is stripped before forwarding
 	handle_path /api/* {
 		reverse_proxy api:3000 {
-			# Đẩy dữ liệu đi ngay, không gom lại — cần cho kênh sự kiện SSE
+			# Flush immediately instead of buffering: required for the SSE event stream
 			flush_interval -1
 		}
 	}
 
-	# Còn lại là trang web
+	# Everything else is the web app
 	handle {
 		reverse_proxy web:80
 	}

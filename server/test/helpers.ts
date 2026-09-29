@@ -7,7 +7,7 @@ const URL = process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@localhost
 
 export async function openTestDb() {
   const { db, pool } = createDb(URL);
-  // Container Postgres khởi động lại một lần trong lúc init; chờ nó sẵn sàng hẳn.
+  // The Postgres container restarts once during init; wait until it is really up.
   for (let attempt = 0; ; attempt++) {
     try {
       await pool.query("select 1");
@@ -32,7 +32,7 @@ export async function makeUser(db: Db, name: string) {
 
 export async function makeWorkspace(db: Db, ownerId: number, opts: { name?: string; isPublic?: boolean } = {}) {
   return createWorkspace(db, {
-    name: opts.name ?? "CLB Thử",
+    name: opts.name ?? "Test Club",
     isPublic: opts.isPublic ?? true,
     ownerId,
   });
@@ -50,7 +50,7 @@ export async function memberOf(db: Db, workspaceId: number, userId: number) {
   return m!;
 }
 
-/** Một workspace với owner + các thành viên, tiện cho test ghi trận. */
+/** A workspace with an owner and members, handy for match tests. */
 export async function makeClub(db: Db, names: string[], opts: { isPublic?: boolean } = {}) {
   const people: Record<string, { id: number; name: string }> = {};
   const [firstName, ...rest] = names;

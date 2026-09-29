@@ -1,5 +1,5 @@
 import { useId } from "react";
-import type { TierId } from "../types.js";
+import type { TierId } from "@app/types.js";
 
 const COLORS: Record<TierId, [light: string, dark: string]> = {
   bronze: ["#D9A274", "#6E3E22"],

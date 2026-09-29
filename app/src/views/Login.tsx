@@ -1,20 +1,21 @@
 import { useState } from "react";
-import { usePlatform } from "../context.js";
-import { useLang } from "../i18n.js";
-import { LangToggle } from "../components/LangToggle.js";
-import { TierBadge } from "../components/TierBadge.js";
+import { usePlatform } from "@app/context.js";
+import { useLang } from "@app/i18n.js";
+import type { LoginOutcome } from "@app/platform.js";
+import { LangToggle } from "@app/components/LangToggle.js";
+import { TierBadge } from "@app/components/TierBadge.js";
 
 export function Login() {
-  const { boardName, kind, startLogin } = usePlatform();
-  const { t } = useLang();
+  const { boardName, startLogin } = usePlatform();
+  const { t, tError } = useLang();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function go() {
     setBusy(true);
     setError(null);
-    const r = await startLogin().catch((e: unknown) => ({ ok: false as const, message: String(e) }));
-    if (!r.ok) setError(r.message);
+    const r: LoginOutcome = await startLogin().catch(() => ({ ok: false, code: "LOGIN_FAILED" }));
+    if (!r.ok) setError(tError(r.code, r.message ?? t("err.LOGIN_FAILED")));
     setBusy(false);
   }
 
@@ -42,7 +43,7 @@ export function Login() {
       {error ? (
         <p className="error" role="alert">{error}</p>
       ) : (
-        <p className="fine">{t(kind === "web" ? "login.hint.web" : "login.hint.extension")}</p>
+        <p className="fine">{t("login.hint.web")}</p>
       )}
     </main>
   );

@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    // Các file test tích hợp dùng chung một database, không được chạy chồng lên nhau.
+    // The integration test files share one database, so they must not run at the same time.
     fileParallelism: false,
   },
 });

@@ -11,7 +11,7 @@ function workspaceName(raw: string): string {
     throw new AppError(
       "VALIDATION",
       400,
-      `Tên workspace cần từ ${WORKSPACE_NAME_MIN} đến ${WORKSPACE_NAME_MAX} ký tự.`,
+      `Workspace name must be ${WORKSPACE_NAME_MIN} to ${WORKSPACE_NAME_MAX} characters.`,
     );
   }
   return name;
@@ -26,7 +26,7 @@ export async function createWorkspace(db: Db, input: { name: string; isPublic: b
     .from(workspaces)
     .where(eq(workspaces.ownerId, input.ownerId));
   if ((owned?.n ?? 0) >= MAX_WORKSPACES_PER_OWNER) {
-    throw new AppError("VALIDATION", 400, `Mỗi người chỉ tạo được tối đa ${MAX_WORKSPACES_PER_OWNER} workspace.`);
+    throw new AppError("VALIDATION", 400, `You can create at most ${MAX_WORKSPACES_PER_OWNER} workspaces.`);
   }
 
   return db.transaction(async (tx) => {
@@ -87,10 +87,10 @@ export async function updateWorkspace(db: Db, input: { workspaceId: number; name
     patch.nameFolded = fold(name);
   }
   if (input.isPublic !== undefined) patch.isPublic = input.isPublic;
-  if (Object.keys(patch).length === 0) throw new AppError("VALIDATION", 400, "Không có gì để đổi.");
+  if (Object.keys(patch).length === 0) throw new AppError("VALIDATION", 400, "Nothing to update.");
 
   const [ws] = await db.update(workspaces).set(patch).where(eq(workspaces.id, input.workspaceId)).returning();
-  if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Không tìm thấy workspace.");
+  if (!ws) throw new AppError("WORKSPACE_NOT_FOUND", 404, "Workspace not found.");
   return ws;
 }
 

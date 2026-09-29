@@ -56,12 +56,12 @@ export const memberships = pgTable(
     wins: integer("wins").notNull().default(0),
     losses: integer("losses").notNull().default(0),
     pointsReachedAt: timestamp("points_reached_at", { withTimezone: true }).notNull().defaultNow(),
-    /** Ai đưa người này ra khỏi workspace. null nghĩa là tự rời. */
+    /** Who removed this member. null means they left on their own. */
     removedBy: integer("removed_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    // Thà giao dịch hỏng ngay còn hơn âm thầm ghi sai số liệu khi bộ đếm lệch.
+    // Better a failed transaction than a silently wrong counter.
     check("memberships_counts_not_negative", sql`${t.wins} >= 0 and ${t.losses} >= 0`),
     uniqueIndex("memberships_workspace_user_idx").on(t.workspaceId, t.userId),
     index("memberships_board_idx").on(t.workspaceId, t.status, t.points),
@@ -94,7 +94,7 @@ export const matches = pgTable(
     reportedBy: integer("reported_by")
       .notNull()
       .references(() => users.id),
-    // Lưu điểm đã áp dụng để xóa trận hoàn lại đúng, kể cả khi luật đổi sau này.
+    // Store the points actually applied so deleting a match refunds exactly, even after the rules change.
     winnerDelta: integer("winner_delta").notNull(),
     loserDelta: integer("loser_delta").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

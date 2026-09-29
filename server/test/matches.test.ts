@@ -31,11 +31,11 @@ async function expectCode(p: Promise<unknown>, code: string) {
   expect((err as AppError).code).toBe(code);
 }
 
-// 2026-09-17 20:00 giờ VN
+// 2026-09-17 20:00 Vietnam time
 const EVENING = new Date("2026-09-17T13:00:00Z");
 
 describe("recordMatch", () => {
-  it("người ghi thắng: +20 cho mình, −20 cho đối thủ", async () => {
+  it("reporter wins: +20 for them, -20 for the opponent", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
 
@@ -46,7 +46,7 @@ describe("recordMatch", () => {
     expect(await pointsOf(b.id)).toMatchObject({ points: 980, wins: 0, losses: 1 });
   });
 
-  it("người ghi thua: đối thủ là người thắng", async () => {
+  it("reporter loses: the opponent is the winner", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
 
@@ -57,30 +57,30 @@ describe("recordMatch", () => {
     expect((await pointsOf(b.id)).points).toBe(1020);
   });
 
-  it("không tự đấu với chính mình", async () => {
+  it("cannot play against yourself", async () => {
     const a = await makeUser(db, "A");
     await expectCode(recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: a.id, result: "win", now: EVENING }), "SELF_MATCH");
   });
 
-  it("đối thủ không ở trong workspace", async () => {
+  it("opponent is not in the workspace", async () => {
     const { people } = await club(["A", "B"]);
-    const outsider = await makeUser(db, "NguoiNgoai");
+    const outsider = await makeUser(db, "Outsider1");
     await expectCode(
       recordMatch(db, { workspaceId: ws.id, reporterId: people.A!.id, opponentId: outsider.id, result: "win", now: EVENING }),
       "OPPONENT_NOT_FOUND",
     );
   });
 
-  it("người ghi không còn trong workspace thì bị chặn", async () => {
+  it("a reporter who left the workspace is blocked", async () => {
     const { people } = await club(["A", "B"]);
-    const outsider = await makeUser(db, "NguoiNgoai2");
+    const outsider = await makeUser(db, "Outsider2");
     await expectCode(
       recordMatch(db, { workspaceId: ws.id, reporterId: outsider.id, opponentId: people.A!.id, result: "win", now: EVENING }),
       "NOT_MEMBER",
     );
   });
 
-  it("cùng một cặp chỉ đánh được 3 trận mỗi ngày", async () => {
+  it("the same pair can only play 3 matches a day", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
     for (let i = 0; i < 3; i++) {
@@ -93,13 +93,13 @@ describe("recordMatch", () => {
     expect((await pointsOf(a.id)).points).toBe(1060);
   });
 
-  it("đủ lượt với người này vẫn đánh được với người khác", async () => {
+  it("running out against one person still allows playing others", async () => {
     const { people } = await club(["A", "B", "C"]);
     const a = people.A!, b = people.B!, c = people.C!;
     for (let i = 0; i < 3; i++) {
       await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "win", now: EVENING });
     }
-    // A–B hết lượt, nhưng A–C và B–C thì chưa
+    // A-B is used up, but A-C and B-C are not
     await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: c.id, result: "win", now: EVENING });
     await recordMatch(db, { workspaceId: ws.id, reporterId: b.id, opponentId: c.id, result: "win", now: EVENING });
 
@@ -110,7 +110,7 @@ describe("recordMatch", () => {
     expect(await matchesTodayBetween(db, ws.id, a.id, c.id, EVENING)).toBe(1);
   });
 
-  it("đổi vai người ghi cũng vẫn là một cặp", async () => {
+  it("swapping who reports still counts as one pair", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
     await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "win", now: EVENING });
@@ -123,21 +123,21 @@ describe("recordMatch", () => {
   });
 
 
-  it("qua 00:00 giờ VN thì được đánh lại", async () => {
+  it("the budget resets at midnight Vietnam time", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
-    const lastMinute = new Date("2026-09-17T16:59:30Z"); // 23:59:30 giờ VN
+    const lastMinute = new Date("2026-09-17T16:59:30Z"); // 23:59:30 Vietnam time
     for (let i = 0; i < 3; i++) {
       await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: lastMinute });
     }
     await expectCode(recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: lastMinute }), "DAILY_LIMIT_REACHED");
 
-    const midnight = new Date("2026-09-17T17:00:00Z"); // 00:00 giờ VN ngày 18
+    const midnight = new Date("2026-09-17T17:00:00Z"); // 00:00 Vietnam time on the 18th
     await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: midnight });
     expect(await matchesToday(db, ws.id, a!.id, midnight)).toBe(1);
   });
 
-  it("8 request song song cùng một cặp chỉ ghi được đúng 3 trận", async () => {
+  it("8 parallel requests for one pair record exactly 3 matches", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
     const results = await Promise.allSettled(
@@ -148,7 +148,7 @@ describe("recordMatch", () => {
     expect((await pointsOf(b!.id)).points).toBe(940);
   });
 
-  it("hai người ghi chéo nhau song song không bị deadlock", async () => {
+  it("two people reporting against each other in parallel do not deadlock", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
     const results = await Promise.allSettled(
@@ -163,7 +163,7 @@ describe("recordMatch", () => {
 });
 
 describe("deleteMatch", () => {
-  it("hoàn lại điểm, số trận thắng/thua, và lượt trong ngày", async () => {
+  it("refunds points, win/loss counters and the daily budget", async () => {
     const { people } = await club(["A", "B", "Admin"]);
     const a = people.A!, b = people.B!, admin = people.Admin!;
     const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING });
@@ -176,7 +176,7 @@ describe("deleteMatch", () => {
     expect(await recentMatches(db, ws.id, 30)).toHaveLength(0);
   });
 
-  it("xóa hai lần thì lần hai báo không tìm thấy, điểm không bị trừ thêm", async () => {
+  it("deleting twice reports not found and does not double refund", async () => {
     const { people } = await club(["A", "B", "Admin"]);
     const a = people.A!, b = people.B!, admin = people.Admin!;
     const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING });
@@ -185,11 +185,11 @@ describe("deleteMatch", () => {
     expect((await pointsOf(a!.id)).points).toBe(1000);
   });
 
-  it("hoàn theo điểm đã lưu trong trận, không theo hằng số hiện tại", async () => {
+  it("refunds the points stored on the match, not the current constants", async () => {
     const { people } = await club(["A", "B", "Admin"]);
     const a = people.A!, b = people.B!, admin = people.Admin!;
     const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING });
-    // Giả lập trận ghi theo luật cũ (+25 / −5)
+    // Simulate a match recorded under older rules (+25 / -5)
     const { matches } = await import("../src/db/schema.js");
     await db.update(matches).set({ winnerDelta: 25, loserDelta: -5 }).where(eq(matches.id, m.id));
 
@@ -200,7 +200,7 @@ describe("deleteMatch", () => {
 });
 
 describe("recentMatches", () => {
-  it("trả về trận mới nhất trước, kèm tên hai người", async () => {
+  it("returns newest first with both player names", async () => {
     const { people } = await club(["A", "B"]);
     const a = people.A!, b = people.B!;
     await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: new Date("2026-09-17T10:00:00Z") });

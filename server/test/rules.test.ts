@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { tierFor, vnDayRange, START_POINTS, WIN_POINTS, LOSS_POINTS, DAILY_LIMIT_PER_PAIR } from "../src/domain/rules.js";
 
-describe("luật điểm", () => {
-  it("dùng đúng hằng số đã chốt", () => {
+describe("scoring rules", () => {
+  it("uses the agreed constants", () => {
     expect(START_POINTS).toBe(1000);
     expect(WIN_POINTS).toBe(20);
     expect(LOSS_POINTS).toBe(-20);
@@ -11,7 +11,7 @@ describe("luật điểm", () => {
 });
 
 describe("tierFor", () => {
-  it("mỗi 100 điểm là một hạng", () => {
+  it("every 100 points is one tier", () => {
     const ids = [1000, 1100, 1200, 1300, 1400].map((p) => tierFor(p).id);
     expect(new Set(ids).size).toBe(5);
     expect(tierFor(1000).id).not.toBe(tierFor(999).id);
@@ -24,31 +24,31 @@ describe("tierFor", () => {
     [1200, "platinum"], [1299, "platinum"],
     [1300, "diamond"], [1399, "diamond"],
     [1400, "master"], [9999, "master"],
-  ])("%i điểm → %s", (points, id) => {
+  ])("%i points maps to %s", (points, id) => {
     expect(tierFor(points).id).toBe(id);
   });
 
-  it("có tên tiếng Việt", () => {
-    expect(tierFor(1000).name).toBe("Bạc");
-    expect(tierFor(1400).name).toBe("Cao Thủ");
+  it("has a display name", () => {
+    expect(tierFor(1000).name).toBe("Silver");
+    expect(tierFor(1400).name).toBe("Master");
   });
 });
 
 describe("vnDayRange", () => {
-  it("23:59 giờ VN vẫn thuộc ngày đó", () => {
+  it("23:59 Vietnam time still belongs to that day", () => {
     // 2026-09-17 23:59 +07:00 = 2026-09-17 16:59Z
     const r = vnDayRange(new Date("2026-09-17T16:59:00Z"));
     expect(r.start.toISOString()).toBe("2026-09-16T17:00:00.000Z");
     expect(r.end.toISOString()).toBe("2026-09-17T17:00:00.000Z");
   });
 
-  it("00:00 giờ VN là ngày mới", () => {
+  it("00:00 Vietnam time starts a new day", () => {
     const r = vnDayRange(new Date("2026-09-17T17:00:00Z"));
     expect(r.start.toISOString()).toBe("2026-09-17T17:00:00.000Z");
     expect(r.end.toISOString()).toBe("2026-09-18T17:00:00.000Z");
   });
 
-  it("07:00 sáng giờ VN (00:00Z) nằm giữa ngày VN, không phải ranh giới", () => {
+  it("07:00 Vietnam time (00:00Z) sits mid-day, not on a boundary", () => {
     const r = vnDayRange(new Date("2026-09-18T00:00:00Z"));
     expect(r.start.toISOString()).toBe("2026-09-17T17:00:00.000Z");
   });

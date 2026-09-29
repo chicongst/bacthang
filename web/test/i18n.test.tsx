@@ -11,9 +11,9 @@ function Probe() {
       <span data-testid="plain">{t("app.retry")}</span>
       <span data-testid="params">{t("record.remaining", { n: 2 })}</span>
       <span data-testid="tier">{tierName("gold")}</span>
-      <span data-testid="known-error">{tError("NOT_MEMBER", "nguyên văn của máy chủ")}</span>
-      <span data-testid="unknown-error">{tError("LẠ_HOẮC", "nguyên văn của máy chủ")}</span>
-      <button onClick={() => setLang(lang === "vi" ? "en" : "vi")}>đổi</button>
+      <span data-testid="known-error">{tError("NOT_MEMBER", "raw server message")}</span>
+      <span data-testid="unknown-error">{tError("UNKNOWN_CODE", "raw server message")}</span>
+      <button onClick={() => setLang(lang === "vi" ? "en" : "vi")}>switch</button>
     </div>
   );
 }
@@ -29,31 +29,31 @@ function renderProbe(search = "?lang=vi") {
 }
 
 describe("i18n", () => {
-  it("lấy ngôn ngữ từ tham số URL", () => {
+  it("takes the language from the URL parameter", () => {
     renderProbe("?lang=en");
     expect(screen.getByTestId("lang")).toHaveTextContent("en");
     expect(screen.getByTestId("plain")).toHaveTextContent("Try again");
   });
 
-  it("thay tham số trong chuỗi", () => {
+  it("substitutes parameters into a string", () => {
     renderProbe();
     expect(screen.getByTestId("params")).toHaveTextContent("còn 2");
   });
 
-  it("dịch tên trình độ theo mã hạng, không theo chữ máy chủ gửi xuống", () => {
+  it("translates tier names from the id, not from the server text", () => {
     renderProbe();
     expect(screen.getByTestId("tier")).toHaveTextContent("Vàng");
   });
 
-  it("lỗi có bản dịch thì dùng bản dịch, không có thì giữ nguyên văn máy chủ", () => {
+  it("uses a translation when the error code has one, otherwise the server text", () => {
     renderProbe();
     expect(screen.getByTestId("known-error")).toHaveTextContent("Bạn không ở trong workspace này.");
-    expect(screen.getByTestId("unknown-error")).toHaveTextContent("nguyên văn của máy chủ");
+    expect(screen.getByTestId("unknown-error")).toHaveTextContent("raw server message");
   });
 
-  it("đổi ngôn ngữ và nhớ lựa chọn", async () => {
+  it("switches language and remembers the choice", async () => {
     renderProbe();
-    await userEvent.click(screen.getByRole("button", { name: "đổi" }));
+    await userEvent.click(screen.getByRole("button", { name: "switch" }));
     expect(screen.getByTestId("lang")).toHaveTextContent("en");
     expect(localStorage.getItem("ranking.lang")).toBe("en");
   });

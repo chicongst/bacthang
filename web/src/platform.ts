@@ -1,5 +1,6 @@
 import { createApi } from "@app/api.js";
-import type { Platform } from "@app/platform.js";
+import { DEFAULT_BOARD_NAME } from "@app/constants.js";
+import type { LoginErrorCode, Platform } from "@app/platform.js";
 
 const TOKEN_KEY = "ranking.token";
 const ACTIVE_KEY = "ranking.activeWorkspace";
@@ -7,13 +8,13 @@ const STATE_KEY = "ranking.oauthState";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "/api";
 const CLIENT_ID = (import.meta.env.VITE_DISCORD_CLIENT_ID as string | undefined) ?? "";
-const BOARD_NAME = (import.meta.env.VITE_BOARD_NAME as string | undefined)?.trim() || "Bảng Xếp Hạng";
+const BOARD_NAME = (import.meta.env.VITE_BOARD_NAME as string | undefined)?.trim() || DEFAULT_BOARD_NAME;
 const MOCK = import.meta.env.DEV && new URLSearchParams(location.search).has("mock");
 
-/** Discord ID là một dãy số 17–20 chữ số. Giá trị khác nghĩa là chưa cấu hình xong. */
+/** A Discord ID is 17 to 20 digits. Anything else means the app is not configured yet. */
 const CLIENT_ID_OK = /^\d{17,20}$/.test(CLIENT_ID);
 
-/** Discord bắt redirect URI khớp tuyệt đối, nên luôn dùng gốc trang kèm dấu / ở cuối. */
+/** Discord matches redirect URIs exactly, so always use the page origin with a trailing slash. */
 export const REDIRECT_URI = `${location.origin}/`;
 
 let serverChanged: (() => void) | null = null;
@@ -31,16 +32,16 @@ const write = (k: string, v: string | null) => {
     if (v === null) localStorage.removeItem(k);
     else localStorage.setItem(k, v);
   } catch {
-    /* chế độ riêng tư của trình duyệt có thể chặn */
+    /* private browsing may block storage */
   }
 };
 
 export interface LoginResult {
   token?: string;
-  error?: string;
+  error?: LoginErrorCode;
 }
 
-/** Gọi một lần lúc trang mở, để nhận kết quả Discord chuyển hướng về. */
+/** Call once on page load to pick up the result Discord redirected back with. */
 export async function consumeDiscordRedirect(): Promise<LoginResult> {
   const url = new URL(location.href);
   const code = url.searchParams.get("code");
@@ -54,24 +55,24 @@ export async function consumeDiscordRedirect(): Promise<LoginResult> {
 
   if (error) {
     clean();
-    return { error: error === "access_denied" ? "Bạn đã từ chối cấp quyền trên Discord." : "Đăng nhập Discord không thành công." };
+    return { error: error === "access_denied" ? "LOGIN_DENIED" : "LOGIN_FAILED" };
   }
   if (!state || state !== expected) {
     clean();
-    return { error: "Phiên đăng nhập không khớp. Thử lại nhé." };
+    return { error: "LOGIN_STATE_MISMATCH" };
   }
   try {
     const token = await api.exchangeDiscordCode(code!, REDIRECT_URI);
     write(TOKEN_KEY, token);
     clean();
     return { token };
-  } catch (e) {
+  } catch {
     clean();
-    return { error: e instanceof Error ? e.message : "Đăng nhập không thành công." };
+    return { error: "LOGIN_FAILED" };
   }
 }
 
-export function createWebPlatform(onLoginError: (msg: string) => void): Platform {
+export function createWebPlatform(onLoginError: (code: LoginErrorCode) => void): Platform {
   const listeners = new Set<(t: string | null) => void>();
 
   return {
@@ -80,7 +81,6 @@ export function createWebPlatform(onLoginError: (msg: string) => void): Platform
       serverChanged = cb;
     },
     boardName: BOARD_NAME,
-    kind: "web",
     isMock: MOCK,
 
     async getToken() {
@@ -88,7 +88,7 @@ export function createWebPlatform(onLoginError: (msg: string) => void): Platform
     },
     onTokenChange(cb) {
       listeners.add(cb);
-      // Đăng nhập hoặc đăng xuất ở tab khác cũng phải có hiệu lực ở tab này.
+      // Signing in or out in another tab must take effect here too.
       const onStorage = (e: StorageEvent) => {
         if (e.key === TOKEN_KEY) cb(e.newValue);
       };
@@ -106,10 +106,8 @@ export function createWebPlatform(onLoginError: (msg: string) => void): Platform
     async startLogin() {
       if (MOCK) return { ok: true };
       if (!CLIENT_ID_OK) {
-        const message =
-          "Trang chưa được cấu hình Discord. Người quản trị cần điền DISCORD_CLIENT_ID và DISCORD_CLIENT_SECRET rồi dựng lại.";
-        onLoginError(message);
-        return { ok: false, message };
+        onLoginError("LOGIN_NOT_CONFIGURED");
+        return { ok: false, code: "LOGIN_NOT_CONFIGURED" };
       }
       const state = crypto.randomUUID();
       sessionStorage.setItem(STATE_KEY, state);
@@ -123,7 +121,7 @@ export function createWebPlatform(onLoginError: (msg: string) => void): Platform
         prompt: "none",
       }).toString();
       location.assign(authorize.toString());
-      // Trang đang rời đi; promise này không bao giờ trả về.
+      // The page is navigating away; this promise never settles.
       return new Promise<{ ok: true }>(() => {});
     },
 

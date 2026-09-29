@@ -1,61 +1,83 @@
-# Quy ước dự án
+# Project conventions
 
-## Comment: mặc định là KHÔNG
+## Read this first
 
-Code phải tự nói được nó làm gì. Đặt tên đúng, tách hàm nhỏ, kiểu dữ liệu chặt — đó là tài liệu.
-Comment kể lại việc code đang làm là **nhiễu**: nó lặp lại thông tin, và tới lúc code đổi mà comment
-không đổi thì nó thành lời nói dối.
+**Before writing or changing anything under `app/` or `web/`, read
+[`FrontendAgents.md`](FrontendAgents.md).** It carries the front-end conventions:
+structure, the `elements/` pattern, imports, the Platform seam, styling, i18n, the
+data layer, size limits and the pre-commit checklist. This file governs the server
+and everything both sides share.
 
-Chỉ viết comment trong bốn trường hợp:
+`.claude/` enforces the parts of both files that must not be skipped: the rules for
+an area are injected before you edit it, a handful of destructive commands are
+blocked, and a turn cannot end while the typecheck or tests for what you changed are
+red. See [`.claude/README.md`](.claude/README.md).
 
-1. **Mẹo hoặc cách làm lách quy tắc thông thường** — người đọc sẽ tưởng là sai và "sửa" nó.
+## Comments: none by default
+
+Code should say what it does on its own. Good names, small functions and tight types are the
+documentation. A comment that retells the code is noise: it repeats information, and the day the code
+changes without it, the comment becomes a lie.
+
+Write a comment only in these four cases:
+
+1. **A trick, or a rule bent on purpose.** A reader would think it is a mistake and "fix" it.
    ```ts
-   // Khóa theo thứ tự id tăng dần, nếu không hai giao dịch chéo nhau sẽ deadlock.
+   // Always lock in ascending user id order so two crossing transactions cannot deadlock.
    .orderBy(asc(memberships.userId)).for("update")
    ```
-2. **Ràng buộc từ bên ngoài** — giới hạn của thư viện, trình duyệt, hay dịch vụ bên thứ ba.
+2. **A constraint from outside.** A limit of a library, a browser or a third-party service.
    ```ts
-   // EventSource không gắn được header Authorization, nên phải tự đọc luồng bằng fetch.
+   // EventSource cannot set an Authorization header, so we read the stream with fetch.
    ```
-3. **Quyết định đánh đổi** — vì sao chọn cách dở hơn cách hiển nhiên.
-4. **Lý do nghiệp vụ không suy ra được từ code** — một con số, một luật do người dùng đặt ra.
+3. **A trade-off.** Why the worse-looking option was chosen over the obvious one.
+4. **A business reason that cannot be derived from the code.** A number or a rule someone decided.
 
-Không viết: `// lấy danh sách người chơi` đứng trên `getPlayers()`. Không viết tiêu đề chia khối
-(`// ---- đăng nhập ----`) — nếu một file cần chia khối thì nó nên là hai file.
+Do not write `// get the player list` above `getPlayers()`. Do not write section banners
+(`// ---- auth ----`): if a file needs sections, it wants to be two files.
 
-JSDoc chỉ viết cho những gì xuất ra ngoài module và có hành vi không đoán được từ chữ ký hàm.
+Write JSDoc only for things exported out of a module whose behaviour the signature does not reveal.
 
-## Ngôn ngữ
+## Language
 
-- Định danh (biến, hàm, kiểu, tên file): **tiếng Anh**.
-- Comment, thông báo lỗi trả về người dùng, tài liệu: **tiếng Việt**.
-- Giao diện: mọi chuỗi đi qua `app/src/i18n.tsx`, không viết cứng chuỗi trong view.
+- Identifiers, comments, docs, commit messages and test names: **English**.
+- User-facing strings: every string goes through `app/src/i18n.tsx`, which carries both English and
+  Vietnamese. Never hardcode a string in a view.
+- Server error messages are English. The client translates them by error code, so add a matching
+  `err.<CODE>` entry to both dictionaries whenever you add an error code.
+- The shell reports sign-in failures as a `LoginErrorCode` from `app/src/platform.ts`, never a
+  message string. It renders before `LangProvider` mounts, so it uses the standalone `translate()`
+  from `app/src/i18n.tsx`.
+- The product name is Vietnamese in both languages. It lives once, in `app/src/constants.ts`; the
+  Vite config repeats the literal because a Vite config cannot import from the app.
+- Sample data in `app/src/mock.ts` keeps Vietnamese player names on purpose: it feeds the
+  screenshots in `docs/screenshots/`.
 
-## Kiến trúc
+## Architecture
 
-- `server/src/domain/` thuần, không import db hay http. Luật nghiệp vụ nằm ở đây.
-- `server/src/services/` nhận `db` qua tham số, không tự tạo kết nối, không biết gì về HTTP.
-- `server/src/routes/` chỉ làm: xác thực → kiểm tra dữ liệu vào → gọi service → phát sự kiện.
-- `app/src/` là giao diện dùng chung, **không** được import `chrome.*` hay API riêng của trình duyệt.
-  Phần khác nhau giữa web và extension đi qua interface `Platform`.
+- `server/src/domain/` is pure: no database, no HTTP. Business rules live here.
+- `server/src/services/` takes `db` as an argument, never opens its own connection, knows nothing
+  about HTTP.
+- `server/src/http/routes/` only does: authenticate, validate input, call a service, emit an event.
+- `app/src/` is the UI and knows nothing about the shell around it. Whatever a shell provides goes
+  through the `Platform` interface.
 
-## Luật bất biến
+## Rules that must hold
 
-- Mọi con số của luật chơi lấy từ `server/src/domain/rules.ts` và gửi xuống giao diện qua API.
-  Không viết cứng ở hai nơi.
-- Điểm không bao giờ bị đặt lại. Rời nhóm chỉ đổi trạng thái, không xóa dòng thành viên.
-- Mỗi thay đổi dữ liệu trong workspace phải phát sự kiện để các máy khác cập nhật.
+- Every number in the scoring rules comes from `server/src/domain/rules.ts` and travels to the client
+  through the API. Never hardcode it in two places.
+- Points are never reset. Leaving a workspace only changes a status, it never deletes the membership row.
+- Every write inside a workspace emits an event so other clients update.
 
-## Kiểm thử
+## Testing
 
-- Luật nghiệp vụ mới phải có test ở `server/test/`, chạy trên Postgres thật (`npm run db:test`).
-- Sửa lỗi thì viết test tái hiện lỗi **trước**, rồi mới sửa.
-- Không dùng `it.skip` hay `--reporter=dot` để giấu test đỏ.
+- New business rules need a test in `server/test/`, running against a real Postgres (`npm run db:test`).
+- Fixing a bug means writing the test that reproduces it **first**, then the fix.
+- Never hide a red test with `it.skip` or a quieter reporter.
 
-## Trước khi commit
+## Before committing
 
 ```bash
 cd server && npm run typecheck && npm test
-cd ../web && npm run typecheck
-cd ../extension && npm run typecheck
+cd ../web && npm run typecheck && npm test
 ```

@@ -10,10 +10,12 @@ import "./web.css";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RankingApp } from "@app/RankingApp.js";
+import { translate } from "@app/i18n.js";
+import type { LoginErrorCode } from "@app/platform.js";
 import { consumeDiscordRedirect, createWebPlatform } from "./platform.js";
 
 function Root() {
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<LoginErrorCode | null>(null);
   const [platform] = useState(() => createWebPlatform(setLoginError));
   const [ready, setReady] = useState(false);
 
@@ -30,8 +32,10 @@ function Root() {
     <div className="page">
       {loginError && (
         <div className="page-error" role="alert">
-          {loginError}
-          <button onClick={() => setLoginError(null)} aria-label="Đóng">×</button>
+          {translate(`err.${loginError}`)}
+          <button onClick={() => setLoginError(null)} aria-label={translate("app.close")}>
+            ×
+          </button>
         </div>
       )}
       <div className="frame">

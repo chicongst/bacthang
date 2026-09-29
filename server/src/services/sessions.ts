@@ -5,7 +5,7 @@ import { sessions, users } from "../db/schema.js";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-// DB chỉ giữ hash: lộ bảng sessions cũng không dùng được token.
+// Only the hash is stored: leaking the sessions table hands over no usable token.
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function createSession(db: Db, userId: number, now: Date): Promise<string> {

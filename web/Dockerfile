@@ -1,4 +1,4 @@
-# Build từ thư mục gốc ranking/ vì web dùng chung giao diện trong app/
+# Build from the ranking/ root, because web shares the UI in app/
 FROM node:22-alpine AS build
 WORKDIR /src
 COPY web/package.json web/package-lock.json ./web/

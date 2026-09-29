@@ -1,6 +1,6 @@
 function required(name: string): string {
   const v = process.env[name]?.trim();
-  if (!v) throw new Error(`Thiếu biến môi trường ${name}. Xem deploy/.env.example.`);
+  if (!v) throw new Error(`Missing environment variable ${name}. See deploy/.env.example.`);
   return v;
 }
 
@@ -19,7 +19,7 @@ export function loadConfig() {
     discordClientSecret: required("DISCORD_CLIENT_SECRET"),
     discordRedirectUris: list(required("DISCORD_REDIRECT_URIS")),
     adminDiscordIds: list(process.env.ADMIN_DISCORD_IDS),
-    // Sau Caddy thì IP thật nằm ở X-Forwarded-For; rate limit tính theo IP nên cần tin header này.
+    // Behind Caddy the real IP is in X-Forwarded-For, and the rate limiter keys on IP.
     trustProxy: process.env.TRUST_PROXY !== "false",
   };
 }

@@ -1,6 +1,6 @@
-import { useLang } from "../i18n.js";
+import { useLang } from "@app/i18n.js";
 
-/** Cờ Việt Nam và cờ Anh vẽ bằng SVG — emoji cờ không hiện được trên Windows. */
+/** Flags are drawn as SVG because Windows does not render flag emoji. */
 function FlagVN() {
   return (
     <svg viewBox="0 0 30 20" className="flag" aria-hidden="true">

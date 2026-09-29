@@ -1,4 +1,4 @@
-/* Khung của bản web: điện thoại chiếm hết màn hình, máy tính là một cột giữa trang. */
+/* The web frame: full screen on a phone, one centred column on a desktop. */
 html, body { height: 100%; }
 #root { height: 100%; }
 
@@ -25,7 +25,7 @@ html, body { height: 100%; }
   flex-direction: column;
   overflow: hidden;
 }
-/* min-width: 0 là bắt buộc: thiếu nó thì ô con không co nhỏ hơn nội dung và trang tràn ngang. */
+/* min-width: 0 is required: without it a child never shrinks below its content and the page scrolls sideways. */
 .frame > * { flex: 1; min-width: 0; min-height: 0; }
 
 @media (min-width: 560px) {

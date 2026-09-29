@@ -15,7 +15,7 @@ export async function eventRoutes(app: FastifyInstance, ctx: RouteContext): Prom
 
       const open = openStreams.get(user.id) ?? 0;
       if (ctx.limits && open >= ctx.limits.streamsPerUser) {
-        throw new AppError("TOO_MANY_STREAMS", 429, "Bạn đang mở quá nhiều kết nối. Đóng bớt tab rồi thử lại.");
+        throw new AppError("TOO_MANY_STREAMS", 429, "Too many open connections. Close some tabs and try again.");
       }
       openStreams.set(user.id, open + 1);
 
