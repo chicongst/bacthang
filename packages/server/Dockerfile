@@ -1,5 +1,5 @@
 # Built from the repository root: the lockfile is one file for the whole workspace.
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /src
 # Every workspace manifest, because npm ci checks the lockfile against all of them.
 COPY package.json package-lock.json ./
@@ -15,7 +15,7 @@ RUN npm run --workspace bacthang-server build \
   && rm -rf packages/server/src packages/server/test packages/server/scripts \
             packages/server/tsconfig*.json tsconfig.base.json
 
-FROM node:22-alpine
+FROM node:26-alpine
 ENV NODE_ENV=production
 # The whole tree, so node resolves the hoisted modules at /src/node_modules the way it did at build.
 COPY --from=build /src /src
