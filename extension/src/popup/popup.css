@@ -1,0 +1,3 @@
+/* Popup của Chrome có kích thước cố định; bản web thì co giãn. */
+html, body { width: 380px; height: 580px; overflow: hidden; }
+#root { height: 100%; }

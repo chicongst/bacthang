@@ -1,0 +1,16 @@
+{$API_DOMAIN} {
+	encode gzip
+
+	# API nằm dưới /api, phần tiền tố được cắt trước khi chuyển tiếp
+	handle_path /api/* {
+		reverse_proxy api:3000 {
+			# Đẩy dữ liệu đi ngay, không gom lại — cần cho kênh sự kiện SSE
+			flush_interval -1
+		}
+	}
+
+	# Còn lại là trang web
+	handle {
+		reverse_proxy web:80
+	}
+}

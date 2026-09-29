@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ranking
+      POSTGRES_USER: ranking
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?đặt POSTGRES_PASSWORD trong .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ranking -d ranking"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ../server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://ranking:${POSTGRES_PASSWORD}@postgres:5432/ranking
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?}
+      DISCORD_REDIRECT_URIS: ${DISCORD_REDIRECT_URIS:?}
+      ADMIN_DISCORD_IDS: ${ADMIN_DISCORD_IDS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+      args:
+        VITE_API_BASE: /api
+        VITE_DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?}
+        VITE_BOARD_NAME: ${BOARD_NAME:-Bảng Xếp Hạng}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

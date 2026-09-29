@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chính sách riêng tư — Bảng Xếp Hạng</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 32px 20px 64px; background: #0B2720; color: #F3EDDF;
+    font: 15px/1.65 "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 32px 0 8px; color: #F3EDDF; }
+  p, li { color: #D7E0D9; }
+  .updated { color: #9DAFA4; font-size: 13px; margin: 0 0 28px; }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #22604F; vertical-align: top; }
+  th { color: #9DAFA4; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  a { color: #5B8FD9; }
+  .lang { display: flex; gap: 10px; margin-bottom: 24px; }
+  .lang a { font-size: 13px; padding: 5px 12px; border: 1px solid #22604F; border-radius: 999px; text-decoration: none; }
+  .lang a[aria-current="true"] { background: #184B3E; color: #F3EDDF; }
+  section[hidden] { display: none; }
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #22604F; color: #9DAFA4; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="lang">
+    <a href="#vi" id="tab-vi" aria-current="true">Tiếng Việt</a>
+    <a href="#en" id="tab-en">English</a>
+  </div>
+
+  <section id="vi">
+    <h1>Chính sách riêng tư</h1>
+    <p class="updated">Cập nhật lần cuối: 18/09/2026</p>
+
+    <p>Bảng Xếp Hạng là công cụ ghi điểm và xếp hạng cho một nhóm chơi. Trang này nói rõ chúng tôi lấy dữ liệu gì, dùng để làm gì, và bạn xóa nó bằng cách nào.</p>
+
+    <h2>Dữ liệu chúng tôi lưu</h2>
+    <table>
+      <tr><th>Dữ liệu</th><th>Lấy từ đâu</th><th>Dùng để làm gì</th></tr>
+      <tr><td>ID người dùng Discord</td><td>Discord, khi bạn đăng nhập</td><td>Phân biệt tài khoản của bạn với người khác</td></tr>
+      <tr><td>Tên hiển thị và ảnh đại diện Discord</td><td>Discord, khi bạn đăng nhập</td><td>Hiện tên và ảnh bạn trên bảng xếp hạng</td></tr>
+      <tr><td>Điểm, số trận thắng thua, kết quả từng trận</td><td>Do bạn và bạn bè tự ghi trong ứng dụng</td><td>Tính bảng xếp hạng</td></tr>
+      <tr><td>Nhóm (workspace) bạn tham gia và vai trò</td><td>Do bạn thao tác trong ứng dụng</td><td>Phân quyền và hiển thị đúng bảng</td></tr>
+    </table>
+
+    <h2>Những gì chúng tôi KHÔNG lấy</h2>
+    <ul>
+      <li>Không đọc email, tin nhắn, danh sách bạn bè hay máy chủ Discord của bạn. Phạm vi quyền duy nhất chúng tôi xin từ Discord là <code>identify</code>.</li>
+      <li>Không lưu mật khẩu. Việc đăng nhập do Discord xử lý, chúng tôi không bao giờ thấy mật khẩu của bạn.</li>
+      <li>Không đọc lịch sử duyệt web, không chèn mã vào bất kỳ trang nào bạn ghé thăm.</li>
+      <li>Không dùng công cụ theo dõi, quảng cáo hay phân tích hành vi của bên thứ ba.</li>
+    </ul>
+
+    <h2>Dữ liệu được lưu ở đâu</h2>
+    <p>Toàn bộ dữ liệu nằm trên máy chủ do người vận hành nhóm của bạn tự quản lý. Chúng tôi không bán, không cho thuê, không chia sẻ dữ liệu với bên thứ ba. Dữ liệu chỉ được gửi tới Discord đúng một lần lúc đăng nhập, để xác minh danh tính của bạn.</p>
+    <p>Trên máy bạn, extension chỉ lưu một mã phiên đăng nhập và lựa chọn ngôn ngữ trong bộ nhớ của trình duyệt.</p>
+
+    <h2>Ai thấy được dữ liệu của bạn</h2>
+    <p>Những người cùng nhóm với bạn thấy tên, ảnh đại diện, điểm và lịch sử trận của bạn trong nhóm đó. Người ngoài nhóm không thấy gì.</p>
+
+    <h2>Xóa dữ liệu</h2>
+    <p>Bạn có quyền yêu cầu xóa toàn bộ dữ liệu của mình bất cứ lúc nào. Liên hệ người quản trị nhóm, hoặc gỡ extension và yêu cầu quản trị xóa tài khoản khỏi máy chủ. Gỡ extension sẽ xóa mã phiên đăng nhập lưu trên máy bạn.</p>
+
+    <h2>Liên hệ</h2>
+    <p>Mọi câu hỏi về dữ liệu, xin liên hệ người vận hành máy chủ của nhóm bạn.</p>
+  </section>
+
+  <section id="en" hidden>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: 18 September 2026</p>
+
+    <p>Bảng Xếp Hạng is a scoring and ranking tool for a group of players. This page explains exactly what we collect, why, and how you remove it.</p>
+
+    <h2>What we store</h2>
+    <table>
+      <tr><th>Data</th><th>Source</th><th>Purpose</th></tr>
+      <tr><td>Discord user ID</td><td>Discord, when you sign in</td><td>Tell your account apart from others</td></tr>
+      <tr><td>Discord display name and avatar</td><td>Discord, when you sign in</td><td>Show you on the leaderboard</td></tr>
+      <tr><td>Points, wins, losses, match results</td><td>Entered by you and your group</td><td>Calculate the ranking</td></tr>
+      <tr><td>Workspaces you join and your role</td><td>Your actions in the app</td><td>Permissions and showing the right board</td></tr>
+    </table>
+
+    <h2>What we do NOT collect</h2>
+    <ul>
+      <li>We never read your email, messages, friends or Discord servers. The only Discord scope we request is <code>identify</code>.</li>
+      <li>We never store passwords. Discord handles sign-in; we never see your password.</li>
+      <li>We never read your browsing history and never inject code into pages you visit.</li>
+      <li>No third-party trackers, ads or behavioural analytics.</li>
+    </ul>
+
+    <h2>Where data lives</h2>
+    <p>All data is stored on a server operated by your own group's administrator. We do not sell, rent or share it with third parties. Data is sent to Discord exactly once, at sign-in, to verify your identity.</p>
+    <p>On your device, the extension stores only a session token and your language choice in browser storage.</p>
+
+    <h2>Who can see your data</h2>
+    <p>People in the same workspace see your name, avatar, points and match history for that workspace. Nobody outside it does.</p>
+
+    <h2>Deleting your data</h2>
+    <p>You can request deletion of all your data at any time. Contact your group administrator, or uninstall the extension and ask the administrator to remove your account from the server. Uninstalling clears the session token stored on your device.</p>
+
+    <h2>Contact</h2>
+    <p>For any question about your data, contact the operator of your group's server.</p>
+  </section>
+
+  <footer>Bảng Xếp Hạng — hệ thống tính điểm và leo rank cho nhóm chơi.</footer>
+</main>
+<script>
+  function show() {
+    var en = location.hash === "#en";
+    document.getElementById("vi").hidden = en;
+    document.getElementById("en").hidden = !en;
+    document.getElementById("tab-vi").setAttribute("aria-current", String(!en));
+    document.getElementById("tab-en").setAttribute("aria-current", String(en));
+    document.documentElement.lang = en ? "en" : "vi";
+  }
+  addEventListener("hashchange", show);
+  if (!location.hash && (navigator.language || "").toLowerCase().indexOf("vi") !== 0) location.hash = "#en";
+  show();
+</script>
+</body>
+</html>

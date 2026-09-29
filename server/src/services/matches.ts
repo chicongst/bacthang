@@ -1,0 +1,223 @@
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import type { Db } from "../db/client.js";
+import { matches, memberships, users } from "../db/schema.js";
+import { DAILY_LIMIT_PER_PAIR, LOSS_POINTS, WIN_POINTS, vnDayRange } from "../domain/rules.js";
+import { AppError } from "../errors.js";
+
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+type Executor = Db | Tx;
+
+/** Chỉ để hiển thị. Con số dùng để chặn là matchesTodayBetween. */
+export async function matchesToday(db: Executor, workspaceId: number, userId: number, now: Date): Promise<number> {
+  const { start, end } = vnDayRange(now);
+  const [row] = await db
+    .select({ n: count() })
+    .from(matches)
+    .where(
+      and(
+        eq(matches.workspaceId, workspaceId),
+        isNull(matches.deletedAt),
+        gte(matches.createdAt, start),
+        lt(matches.createdAt, end),
+        or(eq(matches.winnerId, userId), eq(matches.loserId, userId)),
+      ),
+    );
+  return row?.n ?? 0;
+}
+
+/** Tính cả hai chiều thắng thua: A thắng B và B thắng A là cùng một cặp. */
+export async function matchesTodayBetween(
+  db: Executor,
+  workspaceId: number,
+  a: number,
+  b: number,
+  now: Date,
+): Promise<number> {
+  const { start, end } = vnDayRange(now);
+  const [row] = await db
+    .select({ n: count() })
+    .from(matches)
+    .where(
+      and(
+        eq(matches.workspaceId, workspaceId),
+        isNull(matches.deletedAt),
+        gte(matches.createdAt, start),
+        lt(matches.createdAt, end),
+        or(
+          and(eq(matches.winnerId, a), eq(matches.loserId, b)),
+          and(eq(matches.winnerId, b), eq(matches.loserId, a)),
+        ),
+      ),
+    );
+  return row?.n ?? 0;
+}
+
+/** Một truy vấn cho mọi đối thủ: hỏi lẻ từng người thành N+1 trên đường nóng nhất. */
+export async function remainingTodayByOpponent(
+  db: Executor,
+  workspaceId: number,
+  userId: number,
+  now: Date,
+): Promise<Map<number, number>> {
+  const { start, end } = vnDayRange(now);
+  // Gom theo số thứ tự cột: drizzle sinh tên cột có tiền tố ở GROUP BY nhưng không có ở SELECT,
+  // nên nhắc lại chính biểu thức đó sẽ bị Postgres coi là hai biểu thức khác nhau.
+  const opponentId = sql<number>`case when ${matches.winnerId} = ${userId} then ${matches.loserId} else ${matches.winnerId} end`;
+  const rows = await db
+    .select({ opponentId, played: count() })
+    .from(matches)
+    .where(
+      and(
+        eq(matches.workspaceId, workspaceId),
+        isNull(matches.deletedAt),
+        gte(matches.createdAt, start),
+        lt(matches.createdAt, end),
+        or(eq(matches.winnerId, userId), eq(matches.loserId, userId)),
+      ),
+    )
+    .groupBy(sql`1`);
+
+  const remaining = new Map<number, number>();
+  for (const row of rows) {
+    remaining.set(Number(row.opponentId), Math.max(0, DAILY_LIMIT_PER_PAIR - row.played));
+  }
+  return remaining;
+}
+
+// Luôn khóa theo thứ tự user id tăng dần, để hai giao dịch chéo nhau không deadlock.
+async function lockMembers(tx: Tx, workspaceId: number, userIds: number[]) {
+  return tx
+    .select({ userId: memberships.userId, status: memberships.status, name: users.name })
+    .from(memberships)
+    .innerJoin(users, eq(users.id, memberships.userId))
+    .where(and(eq(memberships.workspaceId, workspaceId), inArray(memberships.userId, userIds)))
+    .orderBy(asc(memberships.userId))
+    .for("update", { of: memberships });
+}
+
+export interface RecordMatchInput {
+  workspaceId: number;
+  reporterId: number;
+  opponentId: number;
+  result: "win" | "loss";
+  now?: Date;
+}
+
+export async function recordMatch(db: Db, input: RecordMatchInput) {
+  const { workspaceId, reporterId, opponentId, result, now = new Date() } = input;
+  if (reporterId === opponentId) {
+    throw new AppError("SELF_MATCH", 400, "Không thể ghi trận với chính mình.");
+  }
+
+  return db.transaction(async (tx) => {
+    const locked = await lockMembers(tx, workspaceId, [reporterId, opponentId]);
+    const reporter = locked.find((m) => m.userId === reporterId);
+    if (!reporter || reporter.status !== "active") {
+      throw new AppError("NOT_MEMBER", 403, "Bạn không còn trong workspace này.");
+    }
+    const opponent = locked.find((m) => m.userId === opponentId);
+    if (!opponent || opponent.status !== "active") {
+      throw new AppError("OPPONENT_NOT_FOUND", 404, "Đối thủ không còn trong workspace này.");
+    }
+
+    // Đếm sau khi đã giữ khóa, nếu không hai request song song cùng lọt qua.
+    if ((await matchesTodayBetween(tx, workspaceId, reporterId, opponentId, now)) >= DAILY_LIMIT_PER_PAIR) {
+      throw new AppError(
+        "DAILY_LIMIT_REACHED",
+        409,
+        `Bạn và ${opponent.name} đã đánh đủ ${DAILY_LIMIT_PER_PAIR} trận hôm nay. Đánh với người khác thì vẫn ghi được.`,
+      );
+    }
+
+    const winnerId = result === "win" ? reporterId : opponentId;
+    const loserId = result === "win" ? opponentId : reporterId;
+
+    const [match] = await tx
+      .insert(matches)
+      .values({
+        workspaceId,
+        winnerId,
+        loserId,
+        reportedBy: reporterId,
+        winnerDelta: WIN_POINTS,
+        loserDelta: LOSS_POINTS,
+        createdAt: now,
+      })
+      .returning();
+
+    await applyPoints(tx, workspaceId, winnerId, WIN_POINTS, "win", now);
+    await applyPoints(tx, workspaceId, loserId, LOSS_POINTS, "loss", now);
+
+    return match!;
+  });
+}
+
+async function applyPoints(tx: Tx, workspaceId: number, userId: number, delta: number, kind: "win" | "loss", now: Date) {
+  await tx
+    .update(memberships)
+    .set({
+      points: sql`${memberships.points} + ${delta}`,
+      ...(kind === "win" ? { wins: sql`${memberships.wins} + 1` } : { losses: sql`${memberships.losses} + 1` }),
+      pointsReachedAt: now,
+    })
+    .where(and(eq(memberships.workspaceId, workspaceId), eq(memberships.userId, userId)));
+}
+
+export async function deleteMatch(db: Db, input: { workspaceId: number; matchId: number; deletedBy: number; now?: Date }) {
+  const { workspaceId, matchId, deletedBy, now = new Date() } = input;
+
+  return db.transaction(async (tx) => {
+    const [match] = await tx
+      .select()
+      .from(matches)
+      .where(and(eq(matches.id, matchId), eq(matches.workspaceId, workspaceId), isNull(matches.deletedAt)))
+      .for("update");
+    if (!match) throw new AppError("NOT_FOUND", 404, "Không tìm thấy trận này, hoặc trận đã bị xóa.");
+
+    await lockMembers(tx, workspaceId, [match.winnerId, match.loserId]);
+
+    await tx
+      .update(memberships)
+      .set({
+        points: sql`${memberships.points} - ${match.winnerDelta}`,
+        wins: sql`${memberships.wins} - 1`,
+        pointsReachedAt: now,
+      })
+      .where(and(eq(memberships.workspaceId, workspaceId), eq(memberships.userId, match.winnerId)));
+    await tx
+      .update(memberships)
+      .set({
+        points: sql`${memberships.points} - ${match.loserDelta}`,
+        losses: sql`${memberships.losses} - 1`,
+        pointsReachedAt: now,
+      })
+      .where(and(eq(memberships.workspaceId, workspaceId), eq(memberships.userId, match.loserId)));
+
+    await tx.update(matches).set({ deletedAt: now, deletedBy }).where(eq(matches.id, matchId));
+  });
+}
+
+const winner = alias(users, "winner");
+const loser = alias(users, "loser");
+const reporter = alias(users, "reporter");
+
+export async function recentMatches(db: Db, workspaceId: number, limit: number) {
+  return db
+    .select({
+      id: matches.id,
+      createdAt: matches.createdAt,
+      winnerDelta: matches.winnerDelta,
+      loserDelta: matches.loserDelta,
+      winner: { id: winner.id, name: winner.name, avatarUrl: winner.avatarUrl },
+      loser: { id: loser.id, name: loser.name, avatarUrl: loser.avatarUrl },
+      reportedBy: { id: reporter.id, name: reporter.name },
+    })
+    .from(matches)
+    .innerJoin(winner, eq(winner.id, matches.winnerId))
+    .innerJoin(loser, eq(loser.id, matches.loserId))
+    .innerJoin(reporter, eq(reporter.id, matches.reportedBy))
+    .where(and(eq(matches.workspaceId, workspaceId), isNull(matches.deletedAt)))
+    .orderBy(desc(matches.createdAt), desc(matches.id))
+    .limit(limit);
+}
