@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.github
+.claude
+.deploy-host
+deploy
+docs
+*.md

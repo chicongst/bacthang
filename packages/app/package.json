@@ -1,0 +1,10 @@
+{
+  "name": "bacthang-app",
+  "private": true,
+  "type": "module",
+  "description": "The UI every shell renders. It knows nothing about the shell around it.",
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "types": [
+      "vite/client",
+      "node"
+    ],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "paths": {
+      "@app/*": [
+        "../app/src/*"
+      ]
+    },
+    "noEmit": true
+  },
+  "include": [
+    "src",
+    "vite.config.ts",
+    "../app/src"
+  ]
+}

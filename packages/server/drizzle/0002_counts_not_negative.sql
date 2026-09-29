@@ -1,0 +1,1 @@
+ALTER TABLE "memberships" ADD CONSTRAINT "memberships_counts_not_negative" CHECK ("memberships"."wins" >= 0 and "memberships"."losses" >= 0);

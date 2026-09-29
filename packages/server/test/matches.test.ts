@@ -1,0 +1,213 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import type pg from "pg";
+import type { Db } from "../src/db/client.js";
+import { deleteMatch, recentMatches, recordMatch, matchesToday, matchesTodayBetween } from "../src/services/matches.js";
+import { AppError } from "../src/errors.js";
+import { makeClub, makeUser, memberOf, openTestDb, resetDb, seasonOf } from "./helpers.js";
+
+let db: Db;
+let pool: pg.Pool;
+
+beforeAll(async () => ({ db, pool } = await openTestDb()));
+afterAll(async () => pool.end());
+beforeEach(async () => resetDb(db));
+
+async function club(names: string[]) {
+  const c = await makeClub(db, names);
+  ws = c.ws;
+  return c;
+}
+
+let ws: { id: number };
+const pointsOf = (userId: number) => memberOf(db, ws.id, userId);
+
+async function expectCode(p: Promise<unknown>, code: string) {
+  const err = await p.then(
+    () => null,
+    (e: unknown) => e,
+  );
+  expect(err).toBeInstanceOf(AppError);
+  expect((err as AppError).code).toBe(code);
+}
+
+// 2026-09-17 20:00 Vietnam time
+const EVENING = new Date("2026-09-17T13:00:00Z");
+
+describe("recordMatch", () => {
+  it("reporter wins: +20 for them, -20 for the opponent", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+
+    const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "win", now: EVENING });
+
+    expect(m).toMatchObject({ winnerId: a.id, loserId: b.id, reportedBy: a.id, winnerDelta: 20, loserDelta: -20 });
+    expect(await pointsOf(a.id)).toMatchObject({ points: 1020, wins: 1, losses: 0 });
+    expect(await pointsOf(b.id)).toMatchObject({ points: 980, wins: 0, losses: 1 });
+  });
+
+  it("reporter loses: the opponent is the winner", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+
+    const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "loss", now: EVENING });
+
+    expect(m).toMatchObject({ winnerId: b.id, loserId: a.id, reportedBy: a.id });
+    expect((await pointsOf(a.id)).points).toBe(980);
+    expect((await pointsOf(b.id)).points).toBe(1020);
+  });
+
+  it("cannot play against yourself", async () => {
+    const a = await makeUser(db, "A");
+    await expectCode(recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: a.id, result: "win", now: EVENING }), "SELF_MATCH");
+  });
+
+  it("opponent is not in the workspace", async () => {
+    const { people } = await club(["A", "B"]);
+    const outsider = await makeUser(db, "Outsider1");
+    await expectCode(
+      recordMatch(db, { workspaceId: ws.id, reporterId: people.A!.id, opponentId: outsider.id, result: "win", now: EVENING }),
+      "OPPONENT_NOT_FOUND",
+    );
+  });
+
+  it("a reporter who left the workspace is blocked", async () => {
+    const { people } = await club(["A", "B"]);
+    const outsider = await makeUser(db, "Outsider2");
+    await expectCode(
+      recordMatch(db, { workspaceId: ws.id, reporterId: outsider.id, opponentId: people.A!.id, result: "win", now: EVENING }),
+      "NOT_MEMBER",
+    );
+  });
+
+  it("the same pair can only play 3 matches a day", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+    for (let i = 0; i < 3; i++) {
+      await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "win", now: EVENING });
+    }
+    await expectCode(
+      recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "win", now: EVENING }),
+      "DAILY_LIMIT_REACHED",
+    );
+    expect((await pointsOf(a.id)).points).toBe(1060);
+  });
+
+  it("running out against one person still allows playing others", async () => {
+    const { people } = await club(["A", "B", "C"]);
+    const a = people.A!, b = people.B!, c = people.C!;
+    for (let i = 0; i < 3; i++) {
+      await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "win", now: EVENING });
+    }
+    // A-B is used up, but A-C and B-C are not
+    await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: c.id, result: "win", now: EVENING });
+    await recordMatch(db, { workspaceId: ws.id, reporterId: b.id, opponentId: c.id, result: "win", now: EVENING });
+
+    expect((await pointsOf(a.id)).points).toBe(1080);
+    expect((await pointsOf(b.id)).points).toBe(960);
+    expect((await pointsOf(c.id)).points).toBe(960);
+    expect(await matchesToday(db, ws.id, a.id, EVENING)).toBe(4);
+    expect(await matchesTodayBetween(db, ws.id, a.id, c.id, EVENING)).toBe(1);
+  });
+
+  it("swapping who reports still counts as one pair", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+    await recordMatch(db, { workspaceId: ws.id, reporterId: a.id, opponentId: b.id, result: "win", now: EVENING });
+    await recordMatch(db, { workspaceId: ws.id, reporterId: b.id, opponentId: a.id, result: "win", now: EVENING });
+    await recordMatch(db, { workspaceId: ws.id, reporterId: b.id, opponentId: a.id, result: "loss", now: EVENING });
+    await expectCode(
+      recordMatch(db, { workspaceId: ws.id, reporterId: b.id, opponentId: a.id, result: "win", now: EVENING }),
+      "DAILY_LIMIT_REACHED",
+    );
+  });
+
+
+  it("the budget resets at midnight Vietnam time", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+    const lastMinute = new Date("2026-09-17T16:59:30Z"); // 23:59:30 Vietnam time
+    for (let i = 0; i < 3; i++) {
+      await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: lastMinute });
+    }
+    await expectCode(recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: lastMinute }), "DAILY_LIMIT_REACHED");
+
+    const midnight = new Date("2026-09-17T17:00:00Z"); // 00:00 Vietnam time on the 18th
+    await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: midnight });
+    expect(await matchesToday(db, ws.id, a!.id, midnight)).toBe(1);
+  });
+
+  it("8 parallel requests for one pair record exactly 3 matches", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () => recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING })),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
+    expect((await pointsOf(a!.id)).points).toBe(1060);
+    expect((await pointsOf(b!.id)).points).toBe(940);
+  });
+
+  it("two people reporting against each other in parallel do not deadlock", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, (_, i) =>
+        i % 2 === 0
+          ? recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING })
+          : recordMatch(db, { workspaceId: ws.id, reporterId: b!.id, opponentId: a!.id, result: "win", now: EVENING }),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
+  });
+});
+
+describe("deleteMatch", () => {
+  it("refunds points, win/loss counters and the daily budget", async () => {
+    const { people } = await club(["A", "B", "Admin"]);
+    const a = people.A!, b = people.B!, admin = people.Admin!;
+    const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING });
+
+    await deleteMatch(db, { workspaceId: ws.id, matchId: m.id, deletedBy: admin!.id, now: EVENING });
+
+    expect(await pointsOf(a!.id)).toMatchObject({ points: 1000, wins: 0 });
+    expect(await pointsOf(b!.id)).toMatchObject({ points: 1000, losses: 0 });
+    expect(await matchesToday(db, ws.id, a!.id, EVENING)).toBe(0);
+    expect(await recentMatches(db, ws.id, await seasonOf(db, ws.id), 30)).toHaveLength(0);
+  });
+
+  it("deleting twice reports not found and does not double refund", async () => {
+    const { people } = await club(["A", "B", "Admin"]);
+    const a = people.A!, b = people.B!, admin = people.Admin!;
+    const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING });
+    await deleteMatch(db, { workspaceId: ws.id, matchId: m.id, deletedBy: admin!.id, now: EVENING });
+    await expectCode(deleteMatch(db, { workspaceId: ws.id, matchId: m.id, deletedBy: admin!.id, now: EVENING }), "NOT_FOUND");
+    expect((await pointsOf(a!.id)).points).toBe(1000);
+  });
+
+  it("refunds the points stored on the match, not the current constants", async () => {
+    const { people } = await club(["A", "B", "Admin"]);
+    const a = people.A!, b = people.B!, admin = people.Admin!;
+    const m = await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: EVENING });
+    // Simulate a match recorded under older rules (+25 / -5)
+    const { matches } = await import("../src/db/schema.js");
+    await db.update(matches).set({ winnerDelta: 25, loserDelta: -5 }).where(eq(matches.id, m.id));
+
+    await deleteMatch(db, { workspaceId: ws.id, matchId: m.id, deletedBy: admin!.id, now: EVENING });
+    expect((await pointsOf(a!.id)).points).toBe(1020 - 25);
+    expect((await pointsOf(b!.id)).points).toBe(980 + 5);
+  });
+});
+
+describe("recentMatches", () => {
+  it("returns newest first with both player names", async () => {
+    const { people } = await club(["A", "B"]);
+    const a = people.A!, b = people.B!;
+    await recordMatch(db, { workspaceId: ws.id, reporterId: a!.id, opponentId: b!.id, result: "win", now: new Date("2026-09-17T10:00:00Z") });
+    await recordMatch(db, { workspaceId: ws.id, reporterId: b!.id, opponentId: a!.id, result: "win", now: new Date("2026-09-17T11:00:00Z") });
+
+    const list = await recentMatches(db, ws.id, await seasonOf(db, ws.id), 30);
+    expect(list.map((m) => m.winner.name)).toEqual(["B", "A"]);
+    expect(list[0]).toMatchObject({ loser: { name: "A" }, reportedBy: { name: "B" } });
+  });
+});

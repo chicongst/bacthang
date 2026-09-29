@@ -1,0 +1,24 @@
+{
+  "name": "bacthang",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:server": "npm run --workspace bacthang-server dev",
+    "dev:web": "npm run --workspace bacthang-web dev",
+    "build": "npm run --workspaces --if-present build",
+    "typecheck": "npm run --workspaces --if-present typecheck",
+    "test": "npm run --workspaces --if-present test",
+    "test:coverage": "npm run --workspaces --if-present test:coverage",
+    "e2e": "npm run --workspace bacthang-web e2e",
+    "db:test": "npm run --workspace bacthang-server db:test",
+    "openapi": "npm run --workspace bacthang-server openapi",
+    "discord:register": "npm run --workspace bacthang-server discord:register"
+  }
+}
