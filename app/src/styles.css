@@ -67,7 +67,9 @@ button:disabled { cursor: default; }
 .login .fine { color: var(--ivory-dim); }
 
 /* ---------------- shell ---------------- */
-.shell { height: 100%; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); position: relative; }
+/* Flex, not a fixed grid template: the banner is conditional, so the number of rows
+   changes and a template would push the panel into an implicit auto row that never shrinks. */
+.shell { height: 100%; display: flex; flex-direction: column; position: relative; }
 
 .top { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 6px; }
 .brand {
@@ -99,6 +101,42 @@ button:disabled { cursor: default; }
 .icon-btn svg, .trash svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------------- me card ---------------- */
+.trophy-banner {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 13px 14px 3px;
+}
+.trophy-rule {
+  flex: 1 1 auto; max-width: 74px; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--brass) 55%, transparent));
+}
+.trophy-rule:last-child { transform: scaleX(-1); }
+.trophy-mark { flex: none; display: grid; place-items: center; }
+.trophy-mark svg {
+  width: 15px; height: 15px; fill: none;
+  stroke: color-mix(in oklab, var(--brass) 80%, transparent);
+  stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.trophy-mark-right { transform: scaleX(-1); }
+.trophy-name {
+  margin: 0; flex: 0 1 auto; min-width: 0;
+  font-family: "Big Shoulders Display", "Be Vietnam Pro", sans-serif;
+  font-size: 19px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+  text-align: center; text-wrap: balance;
+  /* The sheen rides across the letters, so the fill has to be the text itself. */
+  background: linear-gradient(100deg, #A87A18 0%, var(--brass) 28%, #FFF0C2 46%, var(--brass) 64%, #A87A18 100%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: trophy-sheen 7s linear infinite;
+}
+@keyframes trophy-sheen {
+  from { background-position: 180% 0; }
+  to { background-position: -80% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trophy-name { animation: none; background-position: 46% 0; }
+}
+
 .me {
   margin: 0 12px; padding: 12px 12px 12px 14px;
   display: flex; align-items: center; gap: 12px;
@@ -130,7 +168,7 @@ button:disabled { cursor: default; }
 .tab:hover { color: var(--ivory); }
 .tab[aria-selected="true"] { color: var(--ivory); border-bottom-color: var(--chalk); }
 
-.panel { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
 /* ---------------- board ---------------- */
 .board { padding: 14px 12px 16px; display: grid; gap: 12px; }

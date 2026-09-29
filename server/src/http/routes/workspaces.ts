@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { ID_SCHEMA, type IdParams, type RouteContext } from "../context.js";
-import { WORKSPACE_NAME_MAX, WORKSPACE_NAME_MIN } from "../../domain/rules.js";
+import { TOURNAMENT_NAME_MAX, WORKSPACE_NAME_MAX, WORKSPACE_NAME_MIN } from "../../domain/rules.js";
 import { createWorkspace, searchWorkspaces, updateWorkspace } from "../../services/workspaces.js";
 import { joinWorkspace, leaveWorkspace } from "../../services/memberships.js";
 import { getBoard } from "../../services/board.js";
@@ -35,7 +35,11 @@ export async function workspaceRoutes(app: FastifyInstance, ctx: RouteContext): 
           type: "object",
           required: ["name", "isPublic"],
           additionalProperties: false,
-          properties: { name: NAME, isPublic: { type: "boolean" } },
+          properties: {
+            name: NAME,
+            isPublic: { type: "boolean" },
+            tournamentName: { type: "string", maxLength: TOURNAMENT_NAME_MAX },
+          },
         },
       },
     },
@@ -75,7 +79,7 @@ export async function workspaceRoutes(app: FastifyInstance, ctx: RouteContext): 
     return getBoard(ctx.db, { workspaceId: Number(req.params.id), userId: user.id, now: ctx.now() });
   });
 
-  app.patch<IdParams & { Body: { name?: string; isPublic?: boolean } }>(
+  app.patch<IdParams & { Body: { name?: string; isPublic?: boolean; tournamentName?: string } }>(
     "/workspaces/:id",
     {
       schema: {
@@ -85,7 +89,11 @@ export async function workspaceRoutes(app: FastifyInstance, ctx: RouteContext): 
         body: {
           type: "object",
           additionalProperties: false,
-          properties: { name: NAME, isPublic: { type: "boolean" } },
+          properties: {
+            name: NAME,
+            isPublic: { type: "boolean" },
+            tournamentName: { type: "string", maxLength: TOURNAMENT_NAME_MAX },
+          },
         },
       },
     },

@@ -160,6 +160,10 @@
                   },
                   "isPublic": {
                     "type": "boolean"
+                  },
+                  "tournamentName": {
+                    "type": "string",
+                    "maxLength": 60
                   }
                 }
               }
@@ -266,6 +270,10 @@
                   },
                   "isPublic": {
                     "type": "boolean"
+                  },
+                  "tournamentName": {
+                    "type": "string",
+                    "maxLength": 60
                   }
                 }
               }

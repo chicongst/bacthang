@@ -11,6 +11,7 @@ export const DAILY_LIMIT_PER_PAIR = 3;
 export const MAX_WORKSPACES_PER_OWNER = 20;
 export const WORKSPACE_NAME_MIN = 2;
 export const WORKSPACE_NAME_MAX = 40;
+export const TOURNAMENT_NAME_MAX = 60;
 
 export type TierId = "bronze" | "silver" | "gold" | "platinum" | "diamond" | "master";
 export interface Tier {

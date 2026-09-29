@@ -37,10 +37,11 @@ export function Group({
 }) {
   const { api } = usePlatform();
   const { t } = useLang();
-  const { id: workspaceId, name: workspaceName, isPublic } = board.workspace;
+  const { id: workspaceId, name: workspaceName, tournamentName, isPublic } = board.workspace;
   const isOwner = board.me.role === "owner";
   const [members, setMembers] = useState<Member[] | null>(null);
   const [name, setName] = useState(workspaceName);
+  const [tournament, setTournament] = useState(tournamentName ?? "");
   const [busy, setBusy] = useState(false);
   const [confirmKickId, setConfirmKickId] = useState<number | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -100,10 +101,16 @@ export function Group({
         <WorkspaceSettings
           name={name}
           savedName={workspaceName}
+          tournament={tournament}
+          savedTournament={tournamentName ?? ""}
           isPublic={isPublic}
           busy={busy}
           onNameChange={setName}
           onRename={() => run(() => api.updateWorkspace(token, workspaceId, { name: name.trim() }))}
+          onTournamentChange={setTournament}
+          onTournamentSave={() =>
+            run(() => api.updateWorkspace(token, workspaceId, { tournamentName: tournament.trim() }))
+          }
           onModeChange={(next) => run(() => api.updateWorkspace(token, workspaceId, { isPublic: next }))}
         />
       ) : (

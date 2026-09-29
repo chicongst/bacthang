@@ -1,7 +1,13 @@
 import { asc, count, desc, eq, ilike, sql } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import { memberships, workspaces } from "../db/schema.js";
-import { MAX_WORKSPACES_PER_OWNER, START_POINTS, WORKSPACE_NAME_MAX, WORKSPACE_NAME_MIN } from "../domain/rules.js";
+import {
+  MAX_WORKSPACES_PER_OWNER,
+  START_POINTS,
+  TOURNAMENT_NAME_MAX,
+  WORKSPACE_NAME_MAX,
+  WORKSPACE_NAME_MIN,
+} from "../domain/rules.js";
 import { fold } from "../domain/text.js";
 import { AppError } from "../errors.js";
 
@@ -79,14 +85,25 @@ export async function searchWorkspaces(db: Db, input: { q: string; userId: numbe
 }
 
 
-export async function updateWorkspace(db: Db, input: { workspaceId: number; name?: string; isPublic?: boolean }) {
-  const patch: { name?: string; nameFolded?: string; isPublic?: boolean } = {};
+export async function updateWorkspace(
+  db: Db,
+  input: { workspaceId: number; name?: string; isPublic?: boolean; tournamentName?: string | null },
+) {
+  const patch: { name?: string; nameFolded?: string; isPublic?: boolean; tournamentName?: string | null } = {};
   if (input.name !== undefined) {
     const name = workspaceName(input.name);
     patch.name = name;
     patch.nameFolded = fold(name);
   }
   if (input.isPublic !== undefined) patch.isPublic = input.isPublic;
+  if (input.tournamentName !== undefined) {
+    const title = input.tournamentName?.trim() ?? "";
+    if (title.length > TOURNAMENT_NAME_MAX) {
+      throw new AppError("VALIDATION", 400, `The tournament name can be at most ${TOURNAMENT_NAME_MAX} characters.`);
+    }
+    // An empty string is how the owner takes the banner back down.
+    patch.tournamentName = title || null;
+  }
   if (Object.keys(patch).length === 0) throw new AppError("VALIDATION", 400, "Nothing to update.");
 
   const [ws] = await db.update(workspaces).set(patch).where(eq(workspaces.id, input.workspaceId)).returning();

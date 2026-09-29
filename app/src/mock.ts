@@ -57,7 +57,13 @@ const rules: Rules = {
 };
 
 export const board: Board = {
-  workspace: { id: 1, name: "CLB Quận 1", isPublic: true, memberCount: players.length },
+  workspace: {
+    id: 1,
+    name: "CLB Quận 1",
+    tournamentName: "Hodfords Billiards Championship",
+    isPublic: true,
+    memberCount: players.length,
+  },
   me: {
     id: meRow.id,
     name: meRow.name,

@@ -24,7 +24,7 @@ export function makeBoard(over: Partial<Board> = {}): Board {
   const me = makePlayer({ id: 1, name: "Me", role: "owner" });
   const rival = makePlayer({ id: 2, rank: 2, name: "Rival" });
   return {
-    workspace: { id: 7, name: "Test Club", isPublic: true, memberCount: 2 },
+    workspace: { id: 7, name: "Test Club", tournamentName: null, isPublic: true, memberCount: 2 },
     rules: {
       startPoints: 1000,
       winPoints: 20,

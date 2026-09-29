@@ -74,7 +74,7 @@ export interface Rules {
 }
 
 export interface Board {
-  workspace: { id: number; name: string; isPublic: boolean; memberCount: number };
+  workspace: { id: number; name: string; tournamentName: string | null; isPublic: boolean; memberCount: number };
   me: BoardMe;
   players: Player[];
   rules: Rules;

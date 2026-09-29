@@ -61,7 +61,13 @@ export async function getBoard(db: Db, input: { workspaceId: number; userId: num
     .where(and(eq(memberships.workspaceId, workspaceId), eq(memberships.status, "pending")));
 
   return {
-    workspace: { id: ws.id, name: ws.name, isPublic: ws.isPublic, memberCount: players.length },
+    workspace: {
+      id: ws.id,
+      name: ws.name,
+      tournamentName: ws.tournamentName,
+      isPublic: ws.isPublic,
+      memberCount: players.length,
+    },
     rules: {
       startPoints: START_POINTS,
       winPoints: WIN_POINTS,

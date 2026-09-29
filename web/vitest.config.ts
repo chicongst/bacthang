@@ -15,6 +15,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: { alias: [{ find: /^@app\//, replacement: `${APP}/` }, ...reactAlias] },
   test: {
+    // e2e/ belongs to Playwright; vitest would try to run it and fail on the import.
+    include: ["test/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["./test/setup.ts"],
     css: false,

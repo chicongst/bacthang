@@ -22,6 +22,13 @@
       "when": 1789705828048,
       "tag": "0002_counts_not_negative",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790673187989,
+      "tag": "0003_workspace_tournament_name",
+      "breakpoints": true
     }
   ]
 }

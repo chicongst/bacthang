@@ -31,6 +31,7 @@ export const workspaces = pgTable(
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
     nameFolded: text("name_folded").notNull(),
+    tournamentName: text("tournament_name"),
     isPublic: boolean("is_public").notNull().default(true),
     ownerId: integer("owner_id")
       .notNull()

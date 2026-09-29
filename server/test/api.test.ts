@@ -330,6 +330,68 @@ describe("owner permissions", () => {
   });
 });
 
+describe("the tournament name", () => {
+  it("is empty until the owner sets one, and comes back on the board", async () => {
+    const owner = await login("code-a");
+    const ws = await makeWs(owner.token);
+
+    const before = await app.inject({ method: "GET", url: `/workspaces/${ws.id}/board`, headers: owner.headers });
+    expect(before.json().workspace.tournamentName).toBeNull();
+
+    await app.inject({
+      method: "PATCH",
+      url: `/workspaces/${ws.id}`,
+      headers: owner.headers,
+      payload: { tournamentName: "  Hodfords Billiards Championship  " },
+    });
+
+    const after = await app.inject({ method: "GET", url: `/workspaces/${ws.id}/board`, headers: owner.headers });
+    expect(after.json().workspace.tournamentName).toBe("Hodfords Billiards Championship");
+  });
+
+  it("an empty string takes the banner back down", async () => {
+    const owner = await login("code-a");
+    const ws = await makeWs(owner.token);
+    const patch = (tournamentName: string) =>
+      app.inject({ method: "PATCH", url: `/workspaces/${ws.id}`, headers: owner.headers, payload: { tournamentName } });
+
+    await patch("Winter Cup");
+    await patch("   ");
+
+    const board = await app.inject({ method: "GET", url: `/workspaces/${ws.id}/board`, headers: owner.headers });
+    expect(board.json().workspace.tournamentName).toBeNull();
+  });
+
+  it("only the owner can set it", async () => {
+    const owner = await login("code-a");
+    const ws = await makeWs(owner.token);
+    const other = await login("code-b");
+    await app.inject({ method: "POST", url: `/workspaces/${ws.id}/join`, headers: other.headers });
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/workspaces/${ws.id}`,
+      headers: other.headers,
+      payload: { tournamentName: "Mine now" },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("rejects a name past the limit", async () => {
+    const owner = await login("code-a");
+    const ws = await makeWs(owner.token);
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/workspaces/${ws.id}`,
+      headers: owner.headers,
+      payload: { tournamentName: "x".repeat(61) },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("VALIDATION");
+  });
+});
+
 describe("recording matches", () => {
   it("returns the updated board", async () => {
     const a = await login("code-a");

@@ -119,7 +119,7 @@ export function createApi(baseUrl: string, options: ApiOptions = {}) {
       if (useMock) throw notReal("removed");
       return request(token, "DELETE", `${ws(id)}/members/${userId}`);
     },
-    async updateWorkspace(token: string, id: number, patch: { name?: string; isPublic?: boolean }): Promise<void> {
+    async updateWorkspace(token: string, id: number, patch: { name?: string; isPublic?: boolean; tournamentName?: string }): Promise<void> {
       if (useMock) throw notReal("changed");
       await request(token, "PATCH", ws(id), patch);
     },

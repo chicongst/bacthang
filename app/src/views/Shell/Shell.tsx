@@ -8,6 +8,7 @@ import { MeCard } from "@app/views/MeCard.js";
 import { AppHeader } from "./elements/AppHeader.js";
 import { TabNav } from "./elements/TabNav.js";
 import { TabPanel } from "./elements/TabPanel.js";
+import { TournamentBanner } from "./elements/TournamentBanner.js";
 
 const TOAST_MS = 2600;
 
@@ -82,6 +83,8 @@ export function Shell({
         onBrowse={onBrowse}
         onSignOut={onSignOut}
       />
+
+      <TournamentBanner name={board?.workspace.tournamentName ?? null} />
 
       {board ? (
         <MeCard me={board.me} total={board.workspace.memberCount} />

@@ -11,6 +11,23 @@ function renderApp(fake = makePlatform()) {
   return fake;
 }
 
+describe("the tournament banner", () => {
+  it("stays hidden until a workspace has a tournament name", async () => {
+    renderApp(makePlatform({ board: makeBoard() }));
+
+    expect(await screen.findByRole("tab", { name: /Bảng/ })).toBeInTheDocument();
+    expect(document.querySelector(".trophy-banner")).toBeNull();
+  });
+
+  it("shows the name as a heading when there is one", async () => {
+    const board = makeBoard();
+    board.workspace.tournamentName = "Hodfords Billiards Championship";
+    renderApp(makePlatform({ board }));
+
+    expect(await screen.findByRole("heading", { name: "Hodfords Billiards Championship" })).toBeInTheDocument();
+  });
+});
+
 describe("app shell", () => {
   it("shows the sign-in screen when signed out", async () => {
     renderApp(makePlatform({ token: null }));
